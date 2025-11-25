@@ -1,0 +1,83 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+    <artifactId>jsync</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>jsync</name>
+    <packaging>pom</packaging>
+    
+    <parent>
+        <groupId>com.fizzed</groupId>
+        <artifactId>maven-parent</artifactId>
+        <version>3.4.0</version>
+    </parent>
+
+    <scm>
+        <url>https://github.com/fizzed/jsync</url>
+        <connection>scm:git:git@github.com:fizzed/jsync.git</connection>
+      <tag>HEAD</tag>
+  </scm>
+    
+    <properties>
+        <java.version>1.8</java.version>
+        <slf4j.version>2.0.13</slf4j.version>
+    </properties>
+
+    <modules>
+        <module>jsync-vfs</module>
+        <module>jsync-engine</module>
+    </modules>
+
+    <dependencyManagement>
+        
+        <dependencies>
+
+            <dependency>
+                <groupId>com.fizzed</groupId>
+                <artifactId>jsync-vfs</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fizzed</groupId>
+                <artifactId>jsync-engine</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+                <version>${slf4j.version}</version>
+            </dependency>
+
+            <!-- testing -->
+
+            <dependency>
+                <groupId>com.fizzed</groupId>
+                <artifactId>crux-util</artifactId>
+                <version>1.0.48</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.junit.jupiter</groupId>
+                <artifactId>junit-jupiter</artifactId>
+                <version>5.10.3</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.assertj</groupId>
+                <artifactId>assertj-core</artifactId>
+                <version>3.27.3</version>
+            </dependency>
+
+            <dependency>
+                <groupId>ch.qos.logback</groupId>
+                <artifactId>logback-classic</artifactId>
+                <version>1.5.6</version>
+            </dependency>
+
+        </dependencies>
+        
+    </dependencyManagement>
+    
+</project>
