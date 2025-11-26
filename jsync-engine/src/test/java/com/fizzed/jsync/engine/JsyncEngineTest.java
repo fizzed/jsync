@@ -59,7 +59,6 @@ class JsyncEngineTest {
         this.writeFile(sourceBFile, "hello");
 
         new JsyncEngine()
-            
             .sync(this.syncSourceDir.resolve("a"), this.syncTargetDir, JsyncMode.MERGE);
 
         // we should now have target/b.txt if MERGE worked
@@ -76,7 +75,6 @@ class JsyncEngineTest {
         Files.write(sourceADirBFile, "hello".getBytes());
 
         new JsyncEngine()
-            
             .sync(sourceADir, this.syncTargetDir, JsyncMode.NEST);
 
         // we should now have target/a/b.txt if NEST worked
@@ -97,7 +95,6 @@ class JsyncEngineTest {
         Path targetBFile = this.syncTargetDir.resolve("b.txt");
 
         new JsyncEngine()
-            
             .sync(sourceADirBFile, targetBFile, JsyncMode.MERGE);
 
         // we should now have target/b.txt if MERGE worked
@@ -113,7 +110,6 @@ class JsyncEngineTest {
         Files.write(sourceADirBFile, "hello".getBytes());
 
         new JsyncEngine()
-            
             .sync(sourceADirBFile, this.syncTargetDir, JsyncMode.NEST);
 
         Path targetBFile = this.syncTargetDir.resolve("b.txt");
@@ -132,7 +128,6 @@ class JsyncEngineTest {
         Files.write(sourceADirBDirCFile, "hello".getBytes());
 
         new JsyncEngine()
-            
             .sync(sourceADir, this.syncTargetDir, JsyncMode.MERGE);
 
         // we should now have target/b.txt if MERGE worked
@@ -151,7 +146,6 @@ class JsyncEngineTest {
         Files.write(sourceADirBDirCFile, "hello".getBytes());
 
         new JsyncEngine()
-            
             .sync(sourceADir, this.syncTargetDir, JsyncMode.NEST);
 
         // we should now have target/b.txt if MERGE worked
@@ -168,7 +162,6 @@ class JsyncEngineTest {
         Files.write(sourceADirBFile, "hello".getBytes());
 
         new JsyncEngine()
-            
             .sync(sourceADir, this.syncTargetDir.resolve("sub-target"), JsyncMode.MERGE);
 
         // we should now have target/b.txt if MERGE worked
@@ -187,13 +180,11 @@ class JsyncEngineTest {
         // NOTE: this should fail if "parents" is not set to true
         assertThrows(ParentDirectoryMissingException.class, () -> {
             new JsyncEngine()
-                
                 .sync(sourceADir, this.syncTargetDir.resolve("sub-target/sub-target2"), JsyncMode.MERGE);
         });
 
         // should work with parents set to true
         new JsyncEngine()
-            
             .setParents(true)
             .sync(sourceADir, this.syncTargetDir.resolve("sub-target/sub-target2"), JsyncMode.MERGE);
 
@@ -216,7 +207,6 @@ class JsyncEngineTest {
 
         assertThrows(PathOverwriteException.class, () -> {
             new JsyncEngine()
-                
                 .sync(sourceADir, subTargetFile, JsyncMode.MERGE);
         });
 
@@ -237,13 +227,11 @@ class JsyncEngineTest {
 
         assertThrows(PathOverwriteException.class, () -> {
             new JsyncEngine()
-                
                 .sync(sourceADirBFile, this.syncTargetDir, JsyncMode.MERGE);
         });
 
         // nest mode should actually work
         new JsyncEngine()
-            
             .sync(sourceADirBFile, this.syncTargetDir, JsyncMode.NEST);
 
         // we should now have target/b.txt if MERGE worked
@@ -270,13 +258,11 @@ class JsyncEngineTest {
         // should fail with overwrite exception (w/o force flag set)
         assertThrows(PathOverwriteException.class, () -> {
             new JsyncEngine()
-                
                 .sync(this.syncSourceDir, this.syncTargetDir, JsyncMode.MERGE);
         });
 
         // should work with force flag set
         new JsyncEngine()
-            
             .setForce(true)
             .sync(this.syncSourceDir, this.syncTargetDir, JsyncMode.MERGE);
 
@@ -304,7 +290,6 @@ class JsyncEngineTest {
         // should fail with overwrite exception (w/o force flag set)
         assertThrows(PathOverwriteException.class, () -> {
             new JsyncEngine()
-                
                 .sync(this.syncSourceDir, this.syncTargetDir, JsyncMode.MERGE);
         });
 
@@ -329,7 +314,6 @@ class JsyncEngineTest {
 
         // sync so we have a replica of source
         new JsyncEngine()
-            
             .sync(this.syncSourceDir, this.syncTargetDir, JsyncMode.MERGE);
 
         // update b.txt in source with same file size though
@@ -359,7 +343,6 @@ class JsyncEngineTest {
 
         // sync so we have a replica of source
         new JsyncEngine()
-            
             .sync(this.syncSourceDir, this.syncTargetDir, JsyncMode.MERGE);
 
         // update b.txt in source with same file size though
@@ -390,7 +373,6 @@ class JsyncEngineTest {
         // don't write it yet
 
         JsyncResult result = new JsyncEngine()
-            
             .sync(sourceAFile, this.syncTargetDir, JsyncMode.NEST);
 
         assertThat(targetAFile).exists().isNotEmptyFile();
@@ -411,8 +393,6 @@ class JsyncEngineTest {
         Files.write(targetAFile, "helloy".getBytes());
 
         JsyncResult result = new JsyncEngine()
-            
-            .setProgress(true)
             .sync(sourceAFile, this.syncTargetDir, JsyncMode.NEST);
 
         assertThat(targetAFile).exists().isNotEmptyFile();
@@ -439,14 +419,12 @@ class JsyncEngineTest {
 
         // since the timestamps on each file match, this should do nothing
         JsyncResult result = new JsyncEngine()
-            
             .sync(this.syncSourceDir, this.syncTargetDir, JsyncMode.MERGE);
 
         assertThat(result.getFilesUpdated()).isEqualTo(0);
 
         // if we "ignoreTimes" though, then the file would sync
         result = new JsyncEngine()
-            
             .setIgnoreTimes(true)
             .sync(this.syncSourceDir, this.syncTargetDir, JsyncMode.MERGE);
 
@@ -470,7 +448,6 @@ class JsyncEngineTest {
         this.touch(targetAFile, Instant.now().minusSeconds(60));
 
         JsyncResult result = new JsyncEngine()
-            
             .sync(sourceAFile, this.syncTargetDir, JsyncMode.NEST);
 
         assertThat(targetAFile).exists().isNotEmptyFile();
@@ -494,7 +471,6 @@ class JsyncEngineTest {
         this.touch(sourceAFile, ts);
 
         JsyncResult result = new JsyncEngine()
-            
             .sync(sourceAFile, this.syncTargetDir, JsyncMode.NEST);
 
         assertThat(modifiedTime(targetAFile)).isCloseTo(ts, within(2, ChronoUnit.SECONDS));
@@ -520,7 +496,6 @@ class JsyncEngineTest {
         this.touch(sourceADir, ts);
 
         final JsyncResult result = new JsyncEngine()
-            
             .sync(this.syncSourceDir, this.syncTargetDir, JsyncMode.MERGE);
 
         assertThat(result.getStatsUpdated()).isEqualTo(1);
@@ -545,7 +520,6 @@ class JsyncEngineTest {
         this.writeFile(targetBFile, "hello");
 
         final JsyncResult result = new JsyncEngine()
-            
             .addExclude("a")
             .addExclude("b/c.txt")
             .setDelete(true)
@@ -565,7 +539,6 @@ class JsyncEngineTest {
         Files.createSymbolicLink(sourceCFile, sourceBFile);
 
         final JsyncResult result = new JsyncEngine()
-            
             .setDelete(true)
             .sync(this.syncSourceDir, this.syncTargetDir, JsyncMode.MERGE);
 

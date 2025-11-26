@@ -33,7 +33,6 @@ public class JsyncDemo {
 //        final VirtualVolume target = sftpVolume("bmh-build-x64-freebsd15-1", targetDir);
 
         final JsyncResult result = new JsyncEngine()
-            .setProgress(true)
 //            .preferredChecksums(Checksum.CK)
 //            .preferredChecksums(Checksum.MD5, Checksum.SHA1)
 //            .preferredChecksums(Checksum.SHA1)

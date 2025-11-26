@@ -25,7 +25,6 @@ public class JsyncEngine {
     private boolean delete;
     private boolean force;
     private boolean parents;
-    private boolean progress;
     private boolean ignoreTimes;
     private int maxFilesMaybeModifiedLimit;
     private List<String> excludes;
@@ -34,7 +33,6 @@ public class JsyncEngine {
         this.eventHandler = new DefaultJsyncEventHandler();
         this.delete = false;
         this.force = false;
-        this.progress = false;
         this.parents = false;
         this.ignoreTimes = false;
         this.preferredChecksums = new ArrayList<>(asList(Checksum.CK, Checksum.MD5));
@@ -85,15 +83,6 @@ public class JsyncEngine {
 
     public JsyncEngine setIgnoreTimes(boolean ignoreTimes) {
         this.ignoreTimes = ignoreTimes;
-        return this;
-    }
-
-    public boolean isProgress() {
-        return this.progress;
-    }
-
-    public JsyncEngine setProgress(boolean progress) {
-        this.progress = progress;
         return this;
     }
 
