@@ -47,6 +47,26 @@ public class JsyncResult {
         return statsUpdated;
     }
 
+    // helpers
+
+    public int getFilesTotal() {
+        return this.filesCreated + this.filesDeleted + this.filesUpdated;
+    }
+
+    public int getDirsTotal() {
+        return this.dirsCreated + this.dirsDeleted;
+    }
+
+    public int getStatsOnlyUpdated() {
+        int totalNewOrUpdated = this.filesCreated + this.filesUpdated + this.dirsDeleted;
+        int statsOnlyUpdated = this.statsUpdated - totalNewOrUpdated;
+        // this shouldn't happen, but if it does, just make it zero
+        if (statsOnlyUpdated < 0) {
+            statsOnlyUpdated = 0;
+        }
+        return statsOnlyUpdated;
+    }
+
     // increment methods for all
 
     public void incrementChecksums(int amount) {
