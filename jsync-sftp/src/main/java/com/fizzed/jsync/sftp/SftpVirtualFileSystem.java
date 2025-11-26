@@ -96,7 +96,7 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
         try {
             final ChannelSftp sftp = (ChannelSftp)ssh.openChannel("sftp");
 
-            log.info("Opening ssh channel to {}...", ssh.getHost());
+            log.info("Opening sftp channel to {}...", ssh.getHost());
 
             sftp.connect();
 
