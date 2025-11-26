@@ -15,9 +15,9 @@ public class JsyncDemo {
     static public void main(String[] args) throws Exception {
 
 //        final String sourceDir = Paths.get("/home/jjlauer/test-sync").toString();
-        final VirtualVolume source = localVolume(Paths.get("/home/jjlauer/workspace/third-party/jsch"));
+//        final VirtualVolume source = localVolume(Paths.get("/home/jjlauer/workspace/third-party/jsch"));
 //        final String sourceDir = Paths.get("/home/jjlauer/workspace/third-party/coredns").toString();
-//        final VirtualVolume source = localVolume(Paths.get("/home/jjlauer/workspace/third-party/nats.java"));
+        final VirtualVolume source = localVolume(Paths.get("/home/jjlauer/workspace/third-party/nats.java"));
 //        final VirtualVolume source = localVolume(Paths.get("/home/jjlauer/workspace/third-party/tokyocabinet-1.4.48"));
 //        final String sourceDir = Paths.get("C:\\Users\\jjlauer\\test-sync").toString();
 //        final String sourceDir = Paths.get("C:\\Users\\jjlauer\\workspace\\third-party\\tokyocabinet-1.4.48").toString();
@@ -27,12 +27,10 @@ public class JsyncDemo {
 
         final String targetDir = "test-sync";
 
-//        final String sshHost = "bmh-dev-x64-indy25-1";
-//        final String sshHost = "bmh-dev-x64-fedora43-1";
-//        final String sshHost = "bmh-build-x64-freebsd15-1";
-        final VirtualVolume target = SftpVirtualVolume.sftpVolume("bmh-build-x64-win11-1", targetDir);
-//        final VirtualVolume target = sftpVolume("bmh-dev-x64-indy25-1", targetDir);
+//        final VirtualVolume target = sftpVolume("bmh-build-x64-win11-1", targetDir);
+        final VirtualVolume target = sftpVolume("bmh-dev-x64-indy25-1", targetDir);
 //        final VirtualVolume target = sftpVolume("bmh-dev-x64-fedora43-1", targetDir);
+//        final VirtualVolume target = sftpVolume("bmh-build-x64-freebsd15-1", targetDir);
 
         final JsyncResult result = new JsyncEngine()
             .setProgress(true)
@@ -45,7 +43,7 @@ public class JsyncDemo {
             //.setIgnoreTimes(true)
             //.setMaxFilesMaybeModifiedLimit(256)
 //            .setProgress(true)
-            .sync(source, target, JsyncMode.NEST);
+            .sync(source, target, JsyncMode.MERGE);
 //            .sync(targetVfs, targetDir, sourceVfs, sourceDir, JsyncMode.NEST);
 
         log.info("");

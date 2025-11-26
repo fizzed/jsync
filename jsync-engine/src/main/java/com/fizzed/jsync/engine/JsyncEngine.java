@@ -1,7 +1,6 @@
 package com.fizzed.jsync.engine;
 
 import com.fizzed.jsync.vfs.*;
-import com.fizzed.jsync.vfs.util.IoHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,6 +20,7 @@ public class JsyncEngine {
     static private final Logger log = LoggerFactory.getLogger(JsyncEngine.class);
 
     // options for syncing, try to mimic defaults for how rsync works
+    private JsyncEventHandler eventHandler;
     final private List<Checksum> preferredChecksums;
     private boolean delete;
     private boolean force;
@@ -31,6 +31,7 @@ public class JsyncEngine {
     private List<String> excludes;
 
     public JsyncEngine() {
+        this.eventHandler = new DefaultJsyncEventHandler();
         this.delete = false;
         this.force = false;
         this.progress = false;
@@ -39,6 +40,16 @@ public class JsyncEngine {
         this.preferredChecksums = new ArrayList<>(asList(Checksum.CK, Checksum.MD5));
         this.maxFilesMaybeModifiedLimit = 256;
         this.excludes = null;
+    }
+
+    public JsyncEventHandler getEventHandler() {
+        return eventHandler;
+    }
+
+    public JsyncEngine setEventHandler(JsyncEventHandler eventHandler) {
+        Objects.requireNonNull(eventHandler, "eventHandler cannot be null");
+        this.eventHandler = eventHandler;
+        return this;
     }
 
     public boolean isDelete() {
@@ -202,10 +213,9 @@ public class JsyncEngine {
         final Checksum checksum = this.negotiateChecksum(sourceVfs, targetVfs);
 
 
-        log.info("Syncing {}:{} -> {}:{} (mode={}, checksum={}, delete={})",
-            sourceVfs, sourcePathAbsFinal, targetVfs, targetPathAbsFinal, mode, checksum, this.delete);
-
         final long now = System.currentTimeMillis();
+
+        this.eventHandler.willBegin(sourceVfs, sourcePathAbsFinal, targetVfs, targetPathAbsFinal);
 
         //
         // Ready to start sync, the only part that matters is if we're syncing a director or a file
@@ -235,10 +245,9 @@ public class JsyncEngine {
             this.syncDeferredFiles(result, deferredFiles, sourceVfs, targetVfs, checksum);
         }
 
-        final long timeTook = System.currentTimeMillis() - now;
+        final long timeMillis = System.currentTimeMillis() - now;
 
-        log.debug("Synced {} new {} updated {} deleted files, {} new {} deleted dirs (in {} ms)", result.getFilesCreated(),
-            result.getFilesUpdated(), result.getFilesDeleted(),result.getDirsCreated(), result.getDirsDeleted(), timeTook);
+        this.eventHandler.willEnd(sourceVfs, sourcePathAbsFinal, targetVfs, targetPathAbsFinal, result, timeMillis);
 
         return result;
     }
@@ -267,8 +276,6 @@ public class JsyncEngine {
         // detect what changes exists between source & target paths
         final JsyncPathChanges changes = this.detectChanges(sourcePath, targetPath);
 
-        log.debug("Itemized changes to {}: {}", targetPath, changes);
-
         // first, check if we should defer syncing the file till later on
         if (deferredFiles != null && changes.isDeferredProcessing(this.ignoreTimes)) {
             deferredFiles.add(new VirtualPathPair(sourcePath, targetPath));
@@ -277,12 +284,12 @@ public class JsyncEngine {
 
         // do we need to sync the file content now?
         if (changes.isContentModified(this.ignoreTimes)) {
-            this.syncFileContent(result, sourceVfs, sourcePath, targetVfs, targetPath);
+            this.transferFile(result, sourceVfs, sourcePath, targetVfs, targetPath, changes);
         }
 
         if (changes.isStatModified()) {
             // stat will need updated if the dir is new OR if the dir stats have changed
-            this.syncPathStat(result, sourcePath, targetVfs, targetPath);
+            this.updateStat(result, sourcePath, targetVfs, targetPath);
         }
     }
 
@@ -337,8 +344,6 @@ public class JsyncEngine {
         // detect what changes exists between source & target paths
         final JsyncPathChanges changes = this.detectChanges(sourcePath, targetPath);
 
-        log.debug("Itemized changes to {}: {}", targetPath, changes);
-
         if (changes.isMissing()) {
             this.createDirectory(result, targetVfs, targetPath, false, false);
         }
@@ -355,7 +360,7 @@ public class JsyncEngine {
                 //log.info("Checking for exlcude of path {} with excludes {}", v, excludePaths);
                 for (VirtualPath excludePath : excludePaths) {
                     if (v.startsWith(excludePath)) {
-                        log.debug("Excluding path {}", v);
+                        this.eventHandler.willExcludePath(v);
                         return false;
                     }
                 }
@@ -422,10 +427,9 @@ public class JsyncEngine {
                 if (sourceChildPath == null) {
                     if (targetChildPath.isDirectory()) {
                         // NOTE: this method handles recursion
-                        log.debug("Processing directory {}", targetChildPath);
                         this.deleteDirectory(0, result, targetVfs, targetChildPath);
                     } else {
-                        log.debug("Deleting file {}", targetChildPath);
+                        this.eventHandler.willDeleteFile(targetChildPath, false);
                         targetVfs.rm(targetChildPath);
                         result.incrementFilesDeleted();
                     }
@@ -437,7 +441,7 @@ public class JsyncEngine {
         // To successfully preserve directory timestamps, you must set the directory attributes after you have finished touching every single file inside that directory.
         if (changes.isStatModified()) {
             // stat will need updated if the dir is new OR if the dir stats have changed
-            this.syncPathStat(result, sourcePath, targetVfs, targetPath);
+            this.updateStat(result, sourcePath, targetVfs, targetPath);
         }
     }
 
@@ -513,37 +517,28 @@ public class JsyncEngine {
         return new JsyncPathChanges(false, size, timestamps, ownership, permissions, checksums);
     }
 
-    protected void syncFileContent(JsyncResult result, VirtualFileSystem sourceVfs, VirtualPath sourceFile, VirtualFileSystem targetVfs, VirtualPath targetFile) throws IOException {
+    protected void transferFile(JsyncResult result, VirtualFileSystem sourceVfs, VirtualPath sourceFile, VirtualFileSystem targetVfs, VirtualPath targetFile, JsyncPathChanges changes) throws IOException {
         // if the target file has no "stats", then we have no info on it yet, and know we're going to create it fresh
-        if (targetFile.getStat() == null) {
-            log.debug("Creating file {}", targetFile);
-        } else {
-            log.debug("Updating file {}", targetFile);
-        }
-
-        // progress is only enabled if verbose is too
-        //final boolean progress = this.getVerboseLogger().isVerbose() && this.progress;
+        this.eventHandler.willTransferFile(sourceFile, targetFile, changes);
 
         // transfer the file
         try (InputStream input = sourceVfs.readFile(sourceFile)) {
             try (OutputStream output = targetVfs.writeStream(targetFile)) {
-                IoHelper.copy(input, output);
-
-                // TODO: provide a way to get progress of transfers
-                //IoHelper.copy(input, output, progress, true, sourceFile.getStat().getSize());
+                // by delegating to an event handler, a user of our library can provide progress, do their own copy, etc.
+                this.eventHandler.doCopy(input, output, sourceFile.getStat().getSize());
             }
         }
 
         // update results after we know the operation was successful
-        if (targetFile.getStat() == null) {
+        if (changes.isMissing()) {
             result.incrementFilesCreated();
         } else {
             result.incrementFilesUpdated();
         }
     }
 
-    protected void syncPathStat(JsyncResult result, VirtualPath sourcePath, VirtualFileSystem targetVfs, VirtualPath targetPath) throws IOException {
-        log.debug("Updating stat {}", targetPath);
+    protected void updateStat(JsyncResult result, VirtualPath sourcePath, VirtualFileSystem targetVfs, VirtualPath targetPath) throws IOException {
+        this.eventHandler.willUpdateStat(sourcePath, targetPath);
 
         targetVfs.updateStat(targetPath, sourcePath.getStat());
 
@@ -571,7 +566,7 @@ public class JsyncEngine {
             if (!parentDirsMissing.isEmpty()) {
                 for (int i = parentDirsMissing.size()-1; i >= 0; i--) {
                     VirtualPath parentPathMissing = parentDirsMissing.get(i);
-                    log.debug("Creating parent dir: {}", parentPathMissing);
+                    this.eventHandler.willCreateDirectory(parentPathMissing, true);
                     vfs.mkdir(parentPathMissing);
                     result.incrementDirsCreated();
                 }
@@ -590,7 +585,7 @@ public class JsyncEngine {
         }
 
         // finally we can create the directory
-        log.debug("Creating dir {}", path);
+        this.eventHandler.willCreateDirectory(path, false);
         vfs.mkdir(path);
         result.incrementDirsCreated();
     }
@@ -604,18 +599,14 @@ public class JsyncEngine {
             if (childPath.isDirectory()) {
                 this.deleteDirectory(level+1, result, vfs, childPath);     // do not log this, that will happen in the below statement via recursion
             } else {
-                log.debug("Deleting file {}", childPath);
+                this.eventHandler.willDeleteFile(childPath, true);      // removing a directory means all files in it are being deleted recursively
                 vfs.rm(childPath);
                 result.incrementFilesDeleted();
             }
         }
 
         // finally we can delete the directory, if level 0, we log as info, but anything else is considered debugging
-        if (level > 0) {
-            log.trace("Deleting child dir {}", path);
-        } else {
-            log.debug("Deleting dir {}", path);
-        }
+        this.eventHandler.willDeleteDirectory(path, level > 0);
         vfs.rmdir(path);
         result.incrementDirsDeleted();
     }
