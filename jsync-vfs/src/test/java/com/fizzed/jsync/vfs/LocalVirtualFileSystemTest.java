@@ -34,12 +34,21 @@ class LocalVirtualFileSystemTest {
     }
 
     @Test
-    public void readPermissions() throws Exception {
-        if (this.defaultVfs.isPosix()) {
-            Path file = this.sourceDir.resolve("test.sh");
-            Files.write(file, "#!/bin/sh\necho hello".getBytes());
-            // 1. Set permissions to 755 (rwxr-xr-x)
+    public void permissions() throws Exception {
+
+        Path file = this.sourceDir.resolve("test.sh");
+        Files.write(file, "#!/bin/sh\necho hello".getBytes());
+
+        if (this.defaultVfs.getStatKind() == StatKind.POSIX) {
+            // set permissions to 755 (rwxr-xr-x)
             Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rwxr-xr-x"));
+
+            final VirtualPath fileWithStat = this.defaultVfs.stat(VirtualPath.parse(file.toString()));
+
+            assertThat(fileWithStat.getStat().getPermissionsOctal()).isEqualTo("755");
+        } else {
+            // set permissions to execute
+            file.toFile().setExecutable(true);
 
             final VirtualPath fileWithStat = this.defaultVfs.stat(VirtualPath.parse(file.toString()));
 

@@ -388,7 +388,7 @@ public class JsyncEngine {
 
             // find a matching target path entirely by name
             VirtualPath targetChildPath = targetChildPaths.stream()
-                .filter(p -> targetVfs.areFileNamesEqual(p.getName(), sourceChildPath.getName()))
+                .filter(p -> targetVfs.isFileNameEqual(p.getName(), sourceChildPath.getName()))
                 .findFirst()
                 .orElse(null);
 
@@ -415,7 +415,7 @@ public class JsyncEngine {
             for (VirtualPath targetChildPath : targetChildPaths) {
                 // find a matching source path entirely by name
                 final VirtualPath sourceChildPath = sourceChildPaths.stream()
-                    .filter(p -> sourceVfs.areFileNamesEqual(p.getName(), targetChildPath.getName()))
+                    .filter(p -> sourceVfs.isFileNameEqual(p.getName(), targetChildPath.getName()))
                     .findFirst()
                     .orElse(null);
 
@@ -618,13 +618,13 @@ public class JsyncEngine {
             log.debug("Detecting if {} checksum is supported on source/target", preferredChecksum);
 
             // check supported checksums, keep a tally of which are supported by both sides, so we can log them out
-            boolean sourceSupported = sourceVfs.isSupported(preferredChecksum);
+            boolean sourceSupported = sourceVfs.isChecksumSupported(preferredChecksum);
 
             if (sourceSupported) {
                 sourceChecksumsSupported.add(preferredChecksum);
             }
 
-            boolean targetSupported = targetVfs.isSupported(preferredChecksum);
+            boolean targetSupported = targetVfs.isChecksumSupported(preferredChecksum);
 
             if (targetSupported) {
                 targetChecksumsSupported.add(preferredChecksum);

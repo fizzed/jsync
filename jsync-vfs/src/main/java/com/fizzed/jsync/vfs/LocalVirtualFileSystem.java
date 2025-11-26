@@ -9,14 +9,14 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributeView;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.nio.file.attribute.FileTime;
-import java.nio.file.attribute.PosixFileAttributes;
+import java.nio.file.attribute.*;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Stream;
+
+import static java.util.Arrays.asList;
 
 public class LocalVirtualFileSystem extends AbstractVirtualFileSystem {
     static private final Logger log = LoggerFactory.getLogger(LocalVirtualFileSystem.class);
@@ -65,11 +65,31 @@ public class LocalVirtualFileSystem extends AbstractVirtualFileSystem {
         return this.posix;
     }
 
+    @Override
+    public boolean isRemote() {
+        return false;
+    }
+
+    @Override
+    public StatKind getStatKind() {
+        if (this.posix) {
+            return StatKind.POSIX;
+        } else {
+            return StatKind.BASIC;
+        }
+    }
+
+    @Override
+    protected List<Checksum> doDetectChecksums() throws IOException {
+        // everything is supported
+        return asList(Checksum.CK, Checksum.MD5, Checksum.SHA1);
+    }
+
     protected Path toNativePath(VirtualPath path) {
         return Paths.get(path.toString());
     }
 
-    protected VirtualPath toVirtualPathWithStat(VirtualPath path) throws IOException {
+    protected VirtualPath withStat(VirtualPath path) throws IOException {
         final Path nativePath = this.toNativePath(path);
 
         // Fetch all attributes in ONE operation (and don't follow symlinks, we need to know the type)
@@ -105,9 +125,13 @@ public class LocalVirtualFileSystem extends AbstractVirtualFileSystem {
         }
 
         // permissions are a tad trickier if they aren't really supported
-        int perms = -1;
+        final int perms;
         if (posixAttrs != null) {
             perms = Permissions.toPosixInt(posixAttrs.permissions());
+        } else {
+            // use basic permissions
+            final Set<PosixFilePermission> simulatedPosixPermissions = Permissions.getPosixPermissions(nativePath);
+            perms = Permissions.toPosixInt(simulatedPosixPermissions);
         }
 
         final VirtualFileStat stat = new VirtualFileStat(type, size, modifiedTime, accessedTime, perms);
@@ -115,14 +139,11 @@ public class LocalVirtualFileSystem extends AbstractVirtualFileSystem {
         return new VirtualPath(path.getParentPath(), path.getName(), type == VirtualFileType.DIR, stat);
     }
 
-    @Override
-    public boolean isRemote() {
-        return false;
-    }
+
 
     @Override
     public VirtualPath stat(VirtualPath path) throws IOException {
-        return this.toVirtualPathWithStat(path);
+        return this.withStat(path);
     }
 
     @Override
@@ -155,7 +176,7 @@ public class LocalVirtualFileSystem extends AbstractVirtualFileSystem {
                     // dir true/false doesn't matter, stats call next will correct it
                     VirtualPath childPathWithoutStats = path.resolve(nativeChildPath.getFileName().toString(), false);
 
-                    VirtualPath childPath = this.toVirtualPathWithStat(childPathWithoutStats);
+                    VirtualPath childPath = this.withStat(childPathWithoutStats);
                     childPaths.add(childPath);
                 }
             }
@@ -203,12 +224,6 @@ public class LocalVirtualFileSystem extends AbstractVirtualFileSystem {
         final Path nativePath = this.toNativePath(path);
         // it's important we allow replacing existing files
         return Files.newOutputStream(nativePath, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-    }
-
-    @Override
-    public boolean isSupported(Checksum checksum) throws IOException {
-        // all are supported!
-        return true;
     }
 
     @Override

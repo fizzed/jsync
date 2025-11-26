@@ -1,7 +1,11 @@
 package com.fizzed.jsync.vfs.util;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.Set;
 
 public class Permissions {
@@ -64,6 +68,33 @@ public class Permissions {
         if ((permissions & 0004) != 0) perms.add(PosixFilePermission.OTHERS_READ);
         if ((permissions & 0002) != 0) perms.add(PosixFilePermission.OTHERS_WRITE);
         if ((permissions & 0001) != 0) perms.add(PosixFilePermission.OTHERS_EXECUTE);
+
+        return perms;
+    }
+
+    static public Set<PosixFilePermission> getPosixPermissions(Path path) throws IOException {
+        // 2. On Windows: Synthesize permissions based on "DOS" attributes
+        Set<PosixFilePermission> perms = new HashSet<>();
+
+        // We use the basic Files.check methods which abstract the OS details
+        boolean isReadable = Files.isReadable(path);
+        boolean isWritable = Files.isWritable(path);
+        boolean isExecutable = Files.isExecutable(path);
+
+        // it seems like on windows, its sftp server only really sets the "owner" permissions and uses zeroes for the rest
+        if (isReadable)   perms.add(PosixFilePermission.OWNER_READ);
+        if (isWritable)   perms.add(PosixFilePermission.OWNER_WRITE);
+        if (isExecutable) perms.add(PosixFilePermission.OWNER_EXECUTE);
+
+        // --- GROUP (Mirror Owner or Default to Read) ---
+        //if (isReadable)   perms.add(PosixFilePermission.GROUP_READ);
+        //if (isWritable)   perms.add(PosixFilePermission.GROUP_WRITE); // Optional: usually safer to omit on Windows
+        //if (isExecutable) perms.add(PosixFilePermission.GROUP_EXECUTE);
+
+        // --- OTHERS (Mirror Owner or Default to Read) ---
+        //if (isReadable)   perms.add(PosixFilePermission.OTHERS_READ);
+        //if (isExecutable) perms.add(PosixFilePermission.OTHERS_EXECUTE);
+        // Usually we don't give OTHERS_WRITE on a best-effort basis
 
         return perms;
     }
