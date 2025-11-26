@@ -17,7 +17,7 @@ public class JsyncDemo {
 //        final String sourceDir = Paths.get("/home/jjlauer/test-sync").toString();
 //        final VirtualVolume source = localVolume(Paths.get("/home/jjlauer/workspace/third-party/jsch"));
 //        final String sourceDir = Paths.get("/home/jjlauer/workspace/third-party/coredns").toString();
-        final VirtualVolume source = localVolume(Paths.get("/home/jjlauer/workspace/third-party/nats.java"));
+        final VirtualVolume source = localVolume(Paths.get( System.getProperty("user.home") + "/workspace/third-party/nats.java"));
 //        final VirtualVolume source = localVolume(Paths.get("/home/jjlauer/workspace/third-party/tokyocabinet-1.4.48"));
 //        final String sourceDir = Paths.get("C:\\Users\\jjlauer\\test-sync").toString();
 //        final String sourceDir = Paths.get("C:\\Users\\jjlauer\\workspace\\third-party\\tokyocabinet-1.4.48").toString();

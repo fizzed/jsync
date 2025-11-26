@@ -241,7 +241,8 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
         final long size = attrs.getSize();
         final long modifiedTime = attrs.getMTime() * 1000L;
         final long accessedTime = attrs.getATime() * 1000L;
-        final int perms = attrs.getPermissions();
+        // sftp stuffs extra stuff like the file type in the permissions value, we don't care about it
+        final int perms = attrs.getPermissions() & 07777;
 
         final VirtualFileType type;
         if (attrs.isDir()) {
@@ -273,19 +274,20 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
     @Override
     public void updateStat(VirtualPath path, VirtualFileStat stat) throws IOException {
         try {
+            final SftpATTRS attrs = SftpATTRSAccessor.createSftpATTRS();
+
             // TODO: are we updating uid/gid?
             Integer uid = null;
             Integer gid = null;
 
             // TODO: are we updating permissions?
-            Integer perms = null;
+//            Integer perms = null;
+            int perms = stat.getPermissions();
+            attrs.setPERMISSIONS(perms);
 
             // are we updating mtime/atime?d
             int mtime = (int)(stat.getModifiedTime()/1000);
             int atime = (int)(stat.getAccessedTime()/1000);
-
-            final SftpATTRS attrs = SftpATTRSAccessor.createSftpATTRS();
-
             attrs.setACMODTIME(atime, mtime);
 
             this.sftp.setStat(path.toString(), attrs);

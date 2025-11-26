@@ -479,6 +479,11 @@ public class JsyncEngine {
             timestamps = true;
         }
 
+        if (sourcePath.getStat().getPermissions() != targetPath.getStat().getPermissions()) {
+            log.trace("Source path {} perms {} != target perms {}", sourcePath, sourcePath.getStat().getPermissions(), targetPath.getStat().getPermissions());
+            permissions = true;
+        }
+
         // if we have "cksum" values on both sides, we can compare those
         if (sourcePath.getStat().getCksum() != null && targetPath.getStat().getCksum() != null) {
             if (!sourcePath.getStat().getCksum().equals(targetPath.getStat().getCksum())) {
@@ -509,7 +514,7 @@ public class JsyncEngine {
             }
         }
 
-        return new JsyncPathChanges(sourcePath.isDirectory(), false, size, timestamps, ownership, permissions, checksums);
+        return new JsyncPathChanges(sourcePath.isDirectory(), false, size, timestamps, permissions, ownership, checksums);
     }
 
     protected void transferFile(JsyncResult result, VirtualFileSystem sourceVfs, VirtualPath sourceFile, VirtualFileSystem targetVfs, VirtualPath targetFile, JsyncPathChanges changes) throws IOException {
