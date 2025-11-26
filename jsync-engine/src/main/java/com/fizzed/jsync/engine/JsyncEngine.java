@@ -272,15 +272,17 @@ public class JsyncEngine {
         }
 
         // do we need to sync the file content now?
+        boolean fileWasTransferred = false;
         if (changes.isContentModified(this.ignoreTimes)) {
             this.transferFile(result, sourceVfs, sourcePath, targetVfs, targetPath, changes);
+            fileWasTransferred = true;
         } else {
             if (log.isDebugEnabled()) log.debug("Verified file {} ({})", targetPath, changes);
         }
 
         if (changes.isStatModified()) {
-            // stat will need updated if the dir is new OR if the dir stats have changed
-            this.updateStat(result, sourcePath, targetVfs, targetPath);
+            // stat will need updated if the file is either new, updated, or if only the perms/times need updating
+            this.updateStat(result, sourcePath, targetVfs, targetPath, changes, fileWasTransferred);
         }
     }
 
@@ -434,7 +436,7 @@ public class JsyncEngine {
         // To successfully preserve directory timestamps, you must set the directory attributes after you have finished touching every single file inside that directory.
         if (changes.isStatModified()) {
             // stat will need updated if the dir is new OR if the dir stats have changed
-            this.updateStat(result, sourcePath, targetVfs, targetPath);
+            this.updateStat(result, sourcePath, targetVfs, targetPath, changes, changes.isMissing());
         }
     }
 
@@ -451,7 +453,7 @@ public class JsyncEngine {
         if (targetPath == null || targetPath.getStat() == null) {
             log.trace("Target path {} missing (new dir/file)", targetPath);
             // we can immediately return the changes since the stat object doesn't exist
-            return new JsyncPathChanges(true, false, false, false, false, null);
+            return new JsyncPathChanges(sourcePath.isDirectory(), true, false, false, false, false, null);
         }
 
         // the remaining properties can all now be calculate
@@ -507,7 +509,7 @@ public class JsyncEngine {
             }
         }
 
-        return new JsyncPathChanges(false, size, timestamps, ownership, permissions, checksums);
+        return new JsyncPathChanges(sourcePath.isDirectory(), false, size, timestamps, ownership, permissions, checksums);
     }
 
     protected void transferFile(JsyncResult result, VirtualFileSystem sourceVfs, VirtualPath sourceFile, VirtualFileSystem targetVfs, VirtualPath targetFile, JsyncPathChanges changes) throws IOException {
@@ -530,8 +532,8 @@ public class JsyncEngine {
         }
     }
 
-    protected void updateStat(JsyncResult result, VirtualPath sourcePath, VirtualFileSystem targetVfs, VirtualPath targetPath) throws IOException {
-        this.eventHandler.willUpdateStat(sourcePath, targetPath);
+    protected void updateStat(JsyncResult result, VirtualPath sourcePath, VirtualFileSystem targetVfs, VirtualPath targetPath, JsyncPathChanges changes, boolean associatedWithFileModifiedOrDirCreated) throws IOException {
+        this.eventHandler.willUpdateStat(sourcePath, targetPath, changes, associatedWithFileModifiedOrDirCreated);
 
         targetVfs.updateStat(targetPath, sourcePath.getStat());
 

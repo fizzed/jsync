@@ -2,6 +2,7 @@ package com.fizzed.jsync.engine;
 
 public class JsyncPathChanges {
 
+    final private boolean directory;
     final private boolean missing;
     final private boolean size;
     final private boolean timestamps;
@@ -9,13 +10,18 @@ public class JsyncPathChanges {
     final private boolean ownership;
     final private Boolean checksum;               // this is not always determined since its expensive
 
-    public JsyncPathChanges(boolean missing, boolean size, boolean timestamps, boolean permissions, boolean ownership, Boolean checksum) {
+    public JsyncPathChanges(boolean directory, boolean missing, boolean size, boolean timestamps, boolean permissions, boolean ownership, Boolean checksum) {
+        this.directory = directory;
         this.missing = missing;
         this.size = size;
         this.timestamps = timestamps;
         this.permissions = permissions;
         this.ownership = ownership;
         this.checksum = checksum;
+    }
+
+    public boolean isDirectory() {
+        return directory;
     }
 
     public boolean isMissing() {
@@ -119,11 +125,13 @@ public class JsyncPathChanges {
             sb.append("checksum mismatch");
         }
         if (sb.length() == 0) {
-            // if we have a checksum, we know there are no changes with a checksum match
-            if (this.checksum != null) {
+            // no changes were detected, let's print out a helpful message
+            if (this.directory) {
+                sb.append("no changes");
+            } else if (this.checksum != null) {
                 sb.append("no changes, checksum match");
             } else {
-                sb.append("no changes, size and times match");
+                sb.append("no changes, times match");
             }
         }
         return sb.toString();

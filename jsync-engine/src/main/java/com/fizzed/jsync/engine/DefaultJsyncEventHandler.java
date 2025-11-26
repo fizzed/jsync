@@ -54,7 +54,7 @@ public class DefaultJsyncEventHandler implements JsyncEventHandler {
     }
 
     @Override
-    public void willUpdateStat(VirtualPath sourcePath, VirtualPath targetPath) {
+    public void willUpdateStat(VirtualPath sourcePath, VirtualPath targetPath, JsyncPathChanges changes, boolean associatedWithFileModifiedOrDirCreated) {
         log.debug("Updating stat {}", targetPath);
     }
 

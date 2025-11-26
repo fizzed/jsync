@@ -23,7 +23,7 @@ public interface JsyncEventHandler {
 
     void willTransferFile(VirtualPath sourcePath, VirtualPath targetPath, JsyncPathChanges changes);
 
-    void willUpdateStat(VirtualPath sourcePath, VirtualPath targetPath);
+    void willUpdateStat(VirtualPath sourcePath, VirtualPath targetPath, JsyncPathChanges changes, boolean associatedWithFileModifiedOrDirCreated);
 
     void doCopy(InputStream input, OutputStream output, long knownContentLength) throws IOException;
 
