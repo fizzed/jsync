@@ -60,13 +60,15 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
 
             // load identities from ~/.ssh/id_*
             final Path sshDir = Paths.get(System.getProperty("user.home"), ".ssh");
-            try (DirectoryStream<Path> stream = Files.newDirectoryStream(sshDir, "id_*")) {
-                for (Path path : stream) {
-                    // skip any ".pub" files though
-                    if (path.toString().endsWith(".pub")) {
-                        continue;
+            if (Files.isDirectory(sshDir)) {
+                try (DirectoryStream<Path> stream = Files.newDirectoryStream(sshDir, "id_*")) {
+                    for (Path path : stream) {
+                        // skip any ".pub" files though
+                        if (path.toString().endsWith(".pub")) {
+                            continue;
+                        }
+                        jsch.addIdentity(path.toString());
                     }
-                    jsch.addIdentity(path.toString());
                 }
             }
 
