@@ -46,7 +46,7 @@ public class LocalVirtualFileSystem extends AbstractVirtualFileSystem {
             .supportedFileAttributeViews()
             .contains("posix");
 
-        log.debug("Detected filesystem {} has pwd {}, posixAttrs {}", name, pwd, isPosixAttributes);
+        log.debug("Detected filesystem {} has pwd={}, posix={}", name, pwd, isPosixAttributes);
 
         // everything is case-sensitive except windows
         final boolean caseSensitive = !System.getProperty("os.name").toLowerCase().contains("windows");
@@ -129,7 +129,7 @@ public class LocalVirtualFileSystem extends AbstractVirtualFileSystem {
         if (posixAttrs != null) {
             perms = Permissions.toPosixInt(posixAttrs.permissions());
         } else {
-            // use basic permissions
+            // use basic permissions, usually ends up being 700 from what I can gather
             final Set<PosixFilePermission> simulatedPosixPermissions = Permissions.getPosixPermissions(nativePath);
             perms = Permissions.toPosixInt(simulatedPosixPermissions);
         }

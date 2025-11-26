@@ -35,8 +35,8 @@ class LocalVirtualFileSystemTest {
 
     @Test
     public void permissions() throws Exception {
-
-        Path file = this.sourceDir.resolve("test.sh");
+        // we want to use a .txt file, which isn't naturally executable on windows or linux/mac
+        Path file = this.sourceDir.resolve("test.txt");
         Files.write(file, "#!/bin/sh\necho hello".getBytes());
 
         if (this.defaultVfs.getStatKind() == StatKind.POSIX) {
@@ -47,12 +47,10 @@ class LocalVirtualFileSystemTest {
 
             assertThat(fileWithStat.getStat().getPermissionsOctal()).isEqualTo("755");
         } else {
-            // set permissions to execute
-            file.toFile().setExecutable(true);
-
+            // on windows this will always end up returning 700
             final VirtualPath fileWithStat = this.defaultVfs.stat(VirtualPath.parse(file.toString()));
 
-            assertThat(fileWithStat.getStat().getPermissionsOctal()).isEqualTo("755");
+            assertThat(fileWithStat.getStat().getPermissionsOctal()).isEqualTo("700");
         }
     }
 
