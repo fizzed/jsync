@@ -385,6 +385,7 @@ public class JsyncEngine {
         // calculate paths new / changed / same
         CHILD_LOOP:
         for (VirtualPath sourceChildPath : sourceChildPaths) {
+
             // find a matching target path entirely by name
             VirtualPath targetChildPath = targetChildPaths.stream()
                 .filter(p -> targetVfs.areFileNamesEqual(p.getName(), sourceChildPath.getName()))
@@ -421,7 +422,8 @@ public class JsyncEngine {
                 if (sourceChildPath == null) {
                     if (targetChildPath.isDirectory()) {
                         // NOTE: this method handles recursion
-                        deleteDirectory(0, result, targetVfs, targetChildPath);
+                        log.debug("Processing directory {}", targetChildPath);
+                        this.deleteDirectory(0, result, targetVfs, targetChildPath);
                     } else {
                         log.debug("Deleting file {}", targetChildPath);
                         targetVfs.rm(targetChildPath);
@@ -600,7 +602,7 @@ public class JsyncEngine {
 
         for (VirtualPath childPath : childPaths) {
             if (childPath.isDirectory()) {
-                deleteDirectory(level+1, result, vfs, childPath);     // do not log this, that will happen in the below statement via recursion
+                this.deleteDirectory(level+1, result, vfs, childPath);     // do not log this, that will happen in the below statement via recursion
             } else {
                 log.debug("Deleting file {}", childPath);
                 vfs.rm(childPath);

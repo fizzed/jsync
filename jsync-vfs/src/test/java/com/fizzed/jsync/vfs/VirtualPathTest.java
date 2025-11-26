@@ -105,6 +105,56 @@ class VirtualPathTest {
     }
 
     @Test
+    public void rootPath() {
+        VirtualPath vp = VirtualPath.parse("/", true);
+
+        assertThat(vp.getParentPath()).isEqualTo("");
+        assertThat(vp.getName()).isEqualTo("");
+        assertThat(vp.isDirectory()).isTrue();
+        assertThat(vp.toFullPath()).isEqualTo("/");
+        assertThat(vp.toString()).isEqualTo("/");
+        assertThat(vp.isAbsolute()).isTrue();
+        assertThat(vp.isRelative()).isFalse();
+
+        VirtualPath vp2 = vp.resolve("a", true, null);
+
+        assertThat(vp2.getParentPath()).isEqualTo("");
+        assertThat(vp2.getName()).isEqualTo("a");
+        assertThat(vp2.toFullPath()).isEqualTo("/a");
+
+        VirtualPath vp3 = vp2.resolve("b", true, null);
+
+        assertThat(vp3.getParentPath()).isEqualTo("/a");
+        assertThat(vp3.getName()).isEqualTo("b");
+        assertThat(vp3.toFullPath()).isEqualTo("/a/b");
+    }
+
+    @Test
+    public void rootPathWindows() {
+        VirtualPath vp = VirtualPath.parse("C:\\", true);
+
+        assertThat(vp.getParentPath()).isEqualTo("C:");
+        assertThat(vp.getName()).isEqualTo("");
+        assertThat(vp.isDirectory()).isTrue();
+        assertThat(vp.toFullPath()).isEqualTo("C:/");
+        assertThat(vp.toString()).isEqualTo("C:/");
+        assertThat(vp.isAbsolute()).isTrue();
+        assertThat(vp.isRelative()).isFalse();
+
+        VirtualPath vp2 = vp.resolve("a", true, null);
+
+        assertThat(vp2.getParentPath()).isEqualTo("C:");
+        assertThat(vp2.getName()).isEqualTo("a");
+        assertThat(vp2.toFullPath()).isEqualTo("C:/a");
+
+        VirtualPath vp3 = vp2.resolve("b", true, null);
+
+        assertThat(vp3.getParentPath()).isEqualTo("C:/a");
+        assertThat(vp3.getName()).isEqualTo("b");
+        assertThat(vp3.toFullPath()).isEqualTo("C:/a/b");
+    }
+
+    @Test
     public void absoluteWindows() {
         VirtualPath vp = VirtualPath.parse("C:\\a", true);
 

@@ -25,6 +25,7 @@
 
     <modules>
         <module>jsync-vfs</module>
+        <module>jsync-sftp</module>
         <module>jsync-engine</module>
     </modules>
 
@@ -40,6 +41,12 @@
 
             <dependency>
                 <groupId>com.fizzed</groupId>
+                <artifactId>jsync-sftp</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fizzed</groupId>
                 <artifactId>jsync-engine</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -50,7 +57,27 @@
                 <version>${slf4j.version}</version>
             </dependency>
 
+            <!-- ssh/sftp support -->
+
+            <dependency>
+                <groupId>com.github.mwiede</groupId>
+                <artifactId>jsch</artifactId>
+                <version>2.27.6</version>
+            </dependency>
+
             <!-- testing -->
+
+            <dependency>
+                <groupId>org.apache.sshd</groupId>
+                <artifactId>sshd-core</artifactId>
+                <version>3.0.0-M2</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.sshd</groupId>
+                <artifactId>sshd-sftp</artifactId>
+                <version>3.0.0-M2</version>
+            </dependency>
 
             <dependency>
                 <groupId>com.fizzed</groupId>

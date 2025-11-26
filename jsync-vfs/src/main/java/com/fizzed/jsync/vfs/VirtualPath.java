@@ -190,7 +190,12 @@ public class VirtualPath {
             // create a new full path
             String thisFullPath = this.toFullPath();
             String pathFullPath = path.toFullPath();
-            String newFullPath = thisFullPath + "/" + pathFullPath;
+            String newFullPath = null;
+            if (thisFullPath.endsWith("/")) {       // covers C:/ or /
+                newFullPath = thisFullPath + pathFullPath;
+            } else {
+                newFullPath = thisFullPath + "/" + pathFullPath;
+            }
             return VirtualPath.parse(newFullPath, path.isDirectory(), path.getStat());
         }
     }

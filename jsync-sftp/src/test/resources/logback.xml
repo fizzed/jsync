@@ -1,0 +1,16 @@
+<configuration>
+    
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%level] [%thread] %logger{36} %mdc{all:-}%msg%n</pattern>
+        </encoder>
+    </appender>
+    
+    <root level="DEBUG">
+        <appender-ref ref="STDOUT" />
+    </root>
+
+    <logger name="org.apache.sshd" level="INFO" />
+    <logger name="org.apache.sshd.common.io.nio2" level="WARN" />
+    
+</configuration>
