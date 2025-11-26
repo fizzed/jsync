@@ -80,14 +80,57 @@ public class JsyncPathChanges {
             || this.ownership;
     }
 
+    public String buildMessage() {
+        StringBuilder sb = new StringBuilder();
+        if (this.missing) {
+            if (sb.length() > 0) {
+                sb.append(", ");
+            }
+            sb.append("is new");
+        }
+        if (this.size) {
+            if (sb.length() > 0) {
+                sb.append(", ");
+            }
+            sb.append("size mismatch");
+        }
+        if (this.timestamps) {
+            if (sb.length() > 0) {
+                sb.append(", ");
+            }
+            sb.append("times mismatch");
+        }
+        if (this.permissions) {
+            if (sb.length() > 0) {
+                sb.append(", ");
+            }
+            sb.append("perms mismatch");
+        }
+        if (this.ownership) {
+            if (sb.length() > 0) {
+                sb.append(", ");
+            }
+            sb.append("ownership mismatch");
+        }
+        if (this.checksum != null && this.checksum) {
+            if (sb.length() > 0) {
+                sb.append(", ");
+            }
+            sb.append("checksum mismatch");
+        }
+        if (sb.length() == 0) {
+            // if we have a checksum, we know there are no changes with a checksum match
+            if (this.checksum != null) {
+                sb.append("no changes, checksum match");
+            } else {
+                sb.append("no changes, size and times match");
+            }
+        }
+        return sb.toString();
+    }
+
     @Override
     public String toString() {
-        return
-            "missing=" + missing +
-            ", size=" + size +
-            ", times=" + timestamps +
-            ", perms=" + permissions +
-            ", ownership=" + ownership +
-            ", checksum=" + checksum;
+        return this.buildMessage();
     }
 }

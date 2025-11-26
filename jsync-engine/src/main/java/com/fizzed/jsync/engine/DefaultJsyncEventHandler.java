@@ -47,7 +47,7 @@ public class DefaultJsyncEventHandler implements JsyncEventHandler {
     @Override
     public void willTransferFile(VirtualPath sourcePath, VirtualPath targetPath, JsyncPathChanges changes) {
         if (changes.isMissing()) {
-            log.debug("Creating file {}", targetPath);
+            log.debug("Creating file {} ({})", targetPath, changes);
         } else {
             log.debug("Updating file {}", targetPath);
         }

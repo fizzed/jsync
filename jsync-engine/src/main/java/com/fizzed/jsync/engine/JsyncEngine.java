@@ -274,6 +274,8 @@ public class JsyncEngine {
         // do we need to sync the file content now?
         if (changes.isContentModified(this.ignoreTimes)) {
             this.transferFile(result, sourceVfs, sourcePath, targetVfs, targetPath, changes);
+        } else {
+            if (log.isDebugEnabled()) log.debug("Verified file {} ({})", targetPath, changes);
         }
 
         if (changes.isStatModified()) {
@@ -335,6 +337,8 @@ public class JsyncEngine {
 
         if (changes.isMissing()) {
             this.createDirectory(result, targetVfs, targetPath, false, false);
+        } else {
+            if (log.isDebugEnabled()) log.debug("Verified dir {} ({})", targetPath, changes.buildMessage());
         }
 
 
