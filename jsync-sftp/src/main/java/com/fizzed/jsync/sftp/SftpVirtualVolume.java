@@ -11,13 +11,17 @@ public class SftpVirtualVolume implements VirtualVolume {
 
     private final String host;
     private final Session ssh;
+    private final boolean closeSsh;
     private final ChannelSftp sftp;
+    private final boolean closeSftp;
     private final String path;
 
-    public SftpVirtualVolume(String host, Session ssh, ChannelSftp sftp, String path) {
+    public SftpVirtualVolume(String host, Session ssh, boolean closeSsh, ChannelSftp sftp, boolean closeSftp, String path) {
         this.host = host;
         this.ssh = ssh;
+        this.closeSsh = closeSsh;
         this.sftp = sftp;
+        this.closeSftp = closeSftp;
         this.path = path;
     }
 
@@ -29,9 +33,9 @@ public class SftpVirtualVolume implements VirtualVolume {
     @Override
     public VirtualFileSystem openFileSystem() throws IOException {
         if (this.ssh != null && this.sftp != null) {
-            return SftpVirtualFileSystem.open(this.ssh, this.sftp);
+            return SftpVirtualFileSystem.open(this.ssh, this.closeSsh, this.sftp, this.closeSftp);
         } else if (this.ssh != null) {
-            return SftpVirtualFileSystem.open(this.ssh);
+            return SftpVirtualFileSystem.open(this.ssh, this.closeSsh);
         } else {
             return SftpVirtualFileSystem.open(this.host);
         }
@@ -47,15 +51,15 @@ public class SftpVirtualVolume implements VirtualVolume {
     }
 
     static public SftpVirtualVolume sftpVolume(String ssh, String path) {
-        return new SftpVirtualVolume(ssh, null, null, path);
+        return new SftpVirtualVolume(ssh, null, true, null, true, path);
     }
 
-    static public SftpVirtualVolume sftpVolume(Session ssh, String path) {
-        return new SftpVirtualVolume(null, ssh, null, path);
+    static public SftpVirtualVolume sftpVolume(Session ssh, boolean closeSsh, String path) {
+        return new SftpVirtualVolume(null, ssh, closeSsh, null, true, path);
     }
 
-    static public SftpVirtualVolume sftpVolume(Session ssh, ChannelSftp sftp, String path) {
-        return new SftpVirtualVolume(null, ssh, sftp, path);
+    static public SftpVirtualVolume sftpVolume(Session ssh, boolean closeSsh, ChannelSftp sftp, boolean closeSftp, String path) {
+        return new SftpVirtualVolume(null, ssh, closeSsh, sftp, closeSftp, path);
     }
 
 }

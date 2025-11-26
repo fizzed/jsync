@@ -84,13 +84,13 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
 
             ssh.connect();
 
-            return open(ssh);
+            return open(ssh, true);
         } catch (JSchException e) {
             throw toIOException(e);
         }
     }
 
-    static public SftpVirtualFileSystem open(Session ssh) throws IOException {
+    static public SftpVirtualFileSystem open(Session ssh, boolean closeSsh) throws IOException {
         try {
             final ChannelSftp sftp = (ChannelSftp)ssh.openChannel("sftp");
 
@@ -98,14 +98,10 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
 
             sftp.connect();
 
-            return open(ssh, false, sftp, true);
+            return open(ssh, closeSsh, sftp, true);
         } catch (JSchException e) {
             throw toIOException(e);
         }
-    }
-
-    static public SftpVirtualFileSystem open(Session ssh, ChannelSftp sftp) throws IOException {
-        return open(ssh, false, sftp, false);
     }
 
     static public SftpVirtualFileSystem open(Session ssh, boolean closeSsh, ChannelSftp sftp, boolean closeSftp) throws IOException {
