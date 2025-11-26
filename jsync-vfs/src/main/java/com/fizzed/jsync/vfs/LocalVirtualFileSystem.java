@@ -1,6 +1,7 @@
 package com.fizzed.jsync.vfs;
 
 import com.fizzed.jsync.vfs.util.Checksums;
+import com.fizzed.jsync.vfs.util.Permissions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,6 +12,7 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributeView;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
+import java.nio.file.attribute.PosixFileAttributes;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -19,8 +21,11 @@ import java.util.stream.Stream;
 public class LocalVirtualFileSystem extends AbstractVirtualFileSystem {
     static private final Logger log = LoggerFactory.getLogger(LocalVirtualFileSystem.class);
 
-    public LocalVirtualFileSystem(String name, VirtualPath pwd, boolean caseSensitive) {
+    private final boolean posix;
+
+    public LocalVirtualFileSystem(String name, VirtualPath pwd, boolean caseSensitive, boolean posix) {
         super(name, pwd, caseSensitive);
+        this.posix = posix;
     }
 
     static public LocalVirtualFileSystem open() {
@@ -37,19 +42,27 @@ public class LocalVirtualFileSystem extends AbstractVirtualFileSystem {
 
         final VirtualPath pwd = VirtualPath.parse(currentWorkingDir.toString(), true);
 
-        log.debug("Detected filesystem {} has pwd {}", name, pwd);
+        final boolean isPosixAttributes = FileSystems.getDefault()
+            .supportedFileAttributeViews()
+            .contains("posix");
+
+        log.debug("Detected filesystem {} has pwd {}, posixAttrs {}", name, pwd, isPosixAttributes);
 
         // everything is case-sensitive except windows
         final boolean caseSensitive = !System.getProperty("os.name").toLowerCase().contains("windows");
 
         log.debug("Detected filesystem {} is case-sensitive={}", name, caseSensitive);
 
-        return new LocalVirtualFileSystem(name, pwd, caseSensitive);
+        return new LocalVirtualFileSystem(name, pwd, caseSensitive, isPosixAttributes);
     }
 
     @Override
     public void close() throws Exception {
         // nothing to do
+    }
+
+    public boolean isPosix() {
+        return this.posix;
     }
 
     protected Path toNativePath(VirtualPath path) {
@@ -60,10 +73,17 @@ public class LocalVirtualFileSystem extends AbstractVirtualFileSystem {
         final Path nativePath = this.toNativePath(path);
 
         // Fetch all attributes in ONE operation (and don't follow symlinks, we need to know the type)
-        final BasicFileAttributes attrs = Files.readAttributes(nativePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
-        // TODO: if we're on posix, we can also do this
-        // fetches size, times, PLUS owner, group, and permissions
-        // PosixFileAttributes attrs = Files.readAttributes(path, PosixFileAttributes.class);
+        final PosixFileAttributes posixAttrs;
+        final BasicFileAttributes attrs;
+        if (this.posix) {
+            posixAttrs = Files.readAttributes(nativePath, PosixFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+            attrs = posixAttrs;
+        } else {
+            posixAttrs = null;
+            attrs = Files.readAttributes(nativePath, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+        }
+
+        // basic attributes get us much of what we need
         final long size = attrs.size();
         final long modifiedTime = attrs.lastModifiedTime().toMillis();
         final long accessedTime = attrs.lastAccessTime().toMillis();
@@ -84,7 +104,13 @@ public class LocalVirtualFileSystem extends AbstractVirtualFileSystem {
             type = VirtualFileType.OTHER;
         }
 
-        final VirtualFileStat stat = new VirtualFileStat(type, size, modifiedTime, accessedTime);
+        // permissions are a tad trickier if they aren't really supported
+        int perms = -1;
+        if (posixAttrs != null) {
+            perms = Permissions.toPosixInt(posixAttrs.permissions());
+        }
+
+        final VirtualFileStat stat = new VirtualFileStat(type, size, modifiedTime, accessedTime, perms);
 
         return new VirtualPath(path.getParentPath(), path.getName(), type == VirtualFileType.DIR, stat);
     }

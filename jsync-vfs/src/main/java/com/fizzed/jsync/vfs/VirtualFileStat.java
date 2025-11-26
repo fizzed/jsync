@@ -6,16 +6,18 @@ public class VirtualFileStat {
     final private long size;
     final private long modifiedTime;
     final private long accessedTime;
+    final private int permissions;
     // there are values that can be populated later as they are expensive operations
     private Long cksum;
     private String md5;
     private String sha1;
 
-    public VirtualFileStat(VirtualFileType type, long size, long modifiedTime, long accessedTime) {
+    public VirtualFileStat(VirtualFileType type, long size, long modifiedTime, long accessedTime, int permissions) {
         this.size = size;
         this.type = type;
         this.modifiedTime = modifiedTime;
         this.accessedTime = accessedTime;
+        this.permissions = permissions;
     }
 
     public VirtualFileType getType() {
@@ -32,6 +34,14 @@ public class VirtualFileStat {
 
     public long getAccessedTime() {
         return accessedTime;
+    }
+
+    public int getPermissions() {
+        return this.permissions;
+    }
+
+    public String getPermissionsOctal() {
+        return Integer.toOctalString(this.permissions);
     }
 
     public Long getCksum() {

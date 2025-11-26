@@ -202,6 +202,7 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
         final long size = attrs.getSize();
         final long modifiedTime = attrs.getMTime() * 1000L;
         final long accessedTime = attrs.getATime() * 1000L;
+        final int perms = attrs.getPermissions();
 
         final VirtualFileType type;
         if (attrs.isDir()) {
@@ -214,7 +215,7 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
             type = VirtualFileType.OTHER;
         }
 
-        final VirtualFileStat stat = new VirtualFileStat(type, size, modifiedTime, accessedTime);
+        final VirtualFileStat stat = new VirtualFileStat(type, size, modifiedTime, accessedTime, perms);
 
         return new VirtualPath(path.getParentPath(), path.getName(), type == VirtualFileType.DIR, stat);
     }
