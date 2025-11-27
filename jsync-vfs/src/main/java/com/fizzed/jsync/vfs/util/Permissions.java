@@ -12,19 +12,19 @@ import java.util.Set;
 
 public class Permissions {
 
-    static public boolean isPosix() {
+    static public boolean isPosixDefaultFileSystem() {
         return FileSystems.getDefault()
             .supportedFileAttributeViews()
             .contains("posix");
     }
 
-    static public int getPosixInt(Path path) throws IOException {
+    static public int getPosixFilePermBits(Path path) throws IOException {
         final Set<PosixFilePermission> permissions = Files.getPosixFilePermissions(path);
-        return toPosixInt(permissions);
+        return toPosixFilePermBits(permissions);
     }
 
-    static public void setPosixInt(Path path, int perms) throws IOException {
-        final Set<PosixFilePermission> permissions = toPosixFilePermissions(perms);
+    static public void setPosixFilePermissions(Path path, int posixFilePermBits) throws IOException {
+        final Set<PosixFilePermission> permissions = toPosixFilePermissions(posixFilePermBits);
         Files.setPosixFilePermissions(path, permissions);
     }
 
@@ -35,7 +35,7 @@ public class Permissions {
      * @param permissions the set of {@link PosixFilePermission} to convert; if null, the result will be 0
      * @return an integer representing the POSIX file permission mode derived from the given set of permissions
      */
-    static public int toPosixInt(Set<PosixFilePermission> permissions) {
+    static public int toPosixFilePermBits(Set<PosixFilePermission> permissions) {
         int mode = 0;
 
         // Null check safety
@@ -65,32 +65,37 @@ public class Permissions {
      * The input integer is interpreted as the POSIX file permission bitmask, where each bit
      * corresponds to a specific owner, group, or others permission (read, write, execute).
      *
-     * @param permissions the integer representing the POSIX file permission bitmask
+     * @param posixFilePermBits the integer representing the POSIX file permission bitmask
      * @return a set of {@link PosixFilePermission} that represents the provided integer bitmask
      */
-    public static Set<PosixFilePermission> toPosixFilePermissions(int permissions) {
+    public static Set<PosixFilePermission> toPosixFilePermissions(int posixFilePermBits) {
         // Create an empty set specifically for this Enum type
         Set<PosixFilePermission> perms = EnumSet.noneOf(PosixFilePermission.class);
 
         // Owner (User)
-        if ((permissions & 0400) != 0) perms.add(PosixFilePermission.OWNER_READ);
-        if ((permissions & 0200) != 0) perms.add(PosixFilePermission.OWNER_WRITE);
-        if ((permissions & 0100) != 0) perms.add(PosixFilePermission.OWNER_EXECUTE);
+        if ((posixFilePermBits & 0400) != 0) perms.add(PosixFilePermission.OWNER_READ);
+        if ((posixFilePermBits & 0200) != 0) perms.add(PosixFilePermission.OWNER_WRITE);
+        if ((posixFilePermBits & 0100) != 0) perms.add(PosixFilePermission.OWNER_EXECUTE);
 
         // Group
-        if ((permissions & 0040) != 0) perms.add(PosixFilePermission.GROUP_READ);
-        if ((permissions & 0020) != 0) perms.add(PosixFilePermission.GROUP_WRITE);
-        if ((permissions & 0010) != 0) perms.add(PosixFilePermission.GROUP_EXECUTE);
+        if ((posixFilePermBits & 0040) != 0) perms.add(PosixFilePermission.GROUP_READ);
+        if ((posixFilePermBits & 0020) != 0) perms.add(PosixFilePermission.GROUP_WRITE);
+        if ((posixFilePermBits & 0010) != 0) perms.add(PosixFilePermission.GROUP_EXECUTE);
 
         // Others (World)
-        if ((permissions & 0004) != 0) perms.add(PosixFilePermission.OTHERS_READ);
-        if ((permissions & 0002) != 0) perms.add(PosixFilePermission.OTHERS_WRITE);
-        if ((permissions & 0001) != 0) perms.add(PosixFilePermission.OTHERS_EXECUTE);
+        if ((posixFilePermBits & 0004) != 0) perms.add(PosixFilePermission.OTHERS_READ);
+        if ((posixFilePermBits & 0002) != 0) perms.add(PosixFilePermission.OTHERS_WRITE);
+        if ((posixFilePermBits & 0001) != 0) perms.add(PosixFilePermission.OTHERS_EXECUTE);
 
         return perms;
     }
 
-    static public Set<PosixFilePermission> toBasicPermissions(Path path) throws IOException {
+    static public int getBasicFilePermBits(Path path) throws IOException {
+        final Set<PosixFilePermission> permissions = getBasicFilePermissions(path);
+        return toPosixFilePermBits(permissions);
+    }
+
+    static public Set<PosixFilePermission> getBasicFilePermissions(Path path) throws IOException {
         // 2. On Windows: Synthesize permissions based on "DOS" attributes
         Set<PosixFilePermission> perms = new HashSet<>();
 
@@ -117,7 +122,12 @@ public class Permissions {
         return perms;
     }
 
-    static public void setBasicPermissions(Path path, Set<PosixFilePermission> perms) {
+    static public void setBasicFilePermissions(Path path, int posixFilePermBits) {
+        final Set<PosixFilePermission> permissions = toPosixFilePermissions(posixFilePermBits);
+        setBasicFilePermissions(path, permissions);
+    }
+
+    static public void setBasicFilePermissions(Path path, Set<PosixFilePermission> perms) {
         File file = path.toFile();
 
         // --- READ ---

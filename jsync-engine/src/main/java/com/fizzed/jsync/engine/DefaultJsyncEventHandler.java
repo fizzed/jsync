@@ -1,5 +1,6 @@
 package com.fizzed.jsync.engine;
 
+import com.fizzed.jsync.vfs.StatUpdateOption;
 import com.fizzed.jsync.vfs.VirtualFileSystem;
 import com.fizzed.jsync.vfs.VirtualPath;
 import org.slf4j.Logger;
@@ -8,6 +9,9 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Collection;
+
+import static java.util.stream.Collectors.joining;
 
 public class DefaultJsyncEventHandler implements JsyncEventHandler {
     // we use a logger as though it was for jsync engine and not us
@@ -59,8 +63,9 @@ public class DefaultJsyncEventHandler implements JsyncEventHandler {
     }
 
     @Override
-    public void willUpdateStat(VirtualPath sourcePath, VirtualPath targetPath, JsyncPathChanges changes, boolean associatedWithFileModifiedOrDirCreated) {
-        log.debug("Updating stat {}", targetPath);
+    public void willUpdateStat(VirtualPath sourcePath, VirtualPath targetPath, JsyncPathChanges changes, Collection<StatUpdateOption> options, boolean associatedWithFileModifiedOrDirCreated) {
+        String message = options.stream().map(v -> v.name().toLowerCase()).collect(joining(","));
+        log.debug("Updating stat {} ({})", targetPath, message);
     }
 
     static private final int BUFFER_SIZE = 8192;

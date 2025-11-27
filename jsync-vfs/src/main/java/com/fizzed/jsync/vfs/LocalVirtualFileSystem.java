@@ -39,7 +39,7 @@ public class LocalVirtualFileSystem extends AbstractVirtualFileSystem {
 
         final VirtualPath pwd = VirtualPath.parse(currentWorkingDir.toString(), true);
 
-        final boolean posix = Permissions.isPosix();
+        final boolean posix = Permissions.isPosixDefaultFileSystem();
 
         log.debug("Detected filesystem {} with pwd={}, posix={}, caseSensitive={}", name, pwd, posix, posix);
 
@@ -117,11 +117,11 @@ public class LocalVirtualFileSystem extends AbstractVirtualFileSystem {
         // permissions are a tad trickier if they aren't really supported
         final int perms;
         if (posixAttrs != null) {
-            perms = Permissions.toPosixInt(posixAttrs.permissions());
+            perms = Permissions.toPosixFilePermBits(posixAttrs.permissions());
         } else {
             // use basic permissions, usually ends up being 700 from what I can gather
-            final Set<PosixFilePermission> basicPermissions = Permissions.toBasicPermissions(nativePath);
-            perms = Permissions.toPosixInt(basicPermissions);
+            final Set<PosixFilePermission> basicPermissions = Permissions.getBasicFilePermissions(nativePath);
+            perms = Permissions.toPosixFilePermBits(basicPermissions);
         }
 
         final VirtualFileStat stat = new VirtualFileStat(type, size, modifiedTime, accessedTime, perms);
@@ -153,7 +153,7 @@ public class LocalVirtualFileSystem extends AbstractVirtualFileSystem {
             if (posixView != null) {
                 posixView.setPermissions(posixFilePermissions);
             } else {
-                Permissions.setBasicPermissions(nativePath, posixFilePermissions);
+                Permissions.setBasicFilePermissions(nativePath, posixFilePermissions);
             }
         }
 

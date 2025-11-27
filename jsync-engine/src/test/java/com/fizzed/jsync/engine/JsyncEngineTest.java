@@ -505,8 +505,8 @@ class JsyncEngineTest {
     }
 
     @Test
-    public void syncFilePermission() throws Exception {
-        assumeTrue(Permissions.isPosix());
+    public void syncFilePermissionPosixStatModel() throws Exception {
+        assumeTrue(Permissions.isPosixDefaultFileSystem(), "Running a posix stat model filesystem");
 
         Path sourceAFile = this.syncSourceDir.resolve("a.txt");
         Files.write(sourceAFile, "hello".getBytes());
@@ -514,13 +514,13 @@ class JsyncEngineTest {
         Path targetAFile = this.syncTargetDir.resolve("a.txt");
         Files.write(targetAFile, "hello".getBytes());
 
-        Permissions.setPosixInt(sourceAFile, 0755);
-        Permissions.setPosixInt(targetAFile, 0644);
+        Permissions.setPosixFilePermissions(sourceAFile, 0755);
+        Permissions.setPosixFilePermissions(targetAFile, 0644);
 
         JsyncResult result = new JsyncEngine()
             .sync(sourceAFile, this.syncTargetDir, JsyncMode.NEST);
 
-        assertThat(Permissions.getPosixInt(targetAFile)).isEqualTo(0755);
+        assertThat(Permissions.getPosixFilePermBits(targetAFile)).isEqualTo(0755);
         assertThat(result.getStatsUpdated()).isEqualTo(1);
         assertThat(result.getFilesCreated()).isEqualTo(0);
         assertThat(result.getFilesDeleted()).isEqualTo(0);
@@ -528,8 +528,9 @@ class JsyncEngineTest {
     }
 
     @Test
-    public void syncFileSkipPermissions() throws Exception {
-        assumeTrue(Permissions.isPosix());
+    public void syncFilePermissionBasicStatModel() throws Exception {
+        // on non-posix, we actually do NOT want any permissions to be sent
+        assumeTrue(!Permissions.isPosixDefaultFileSystem(), "Not running a basic stat model filesystem");
 
         Path sourceAFile = this.syncSourceDir.resolve("a.txt");
         Files.write(sourceAFile, "hello".getBytes());
@@ -537,14 +538,39 @@ class JsyncEngineTest {
         Path targetAFile = this.syncTargetDir.resolve("a.txt");
         Files.write(targetAFile, "hello".getBytes());
 
-        Permissions.setPosixInt(sourceAFile, 0755);
-        Permissions.setPosixInt(targetAFile, 0644);
+        // do any permission changes work?
+        Permissions.setBasicFilePermissions(sourceAFile, 0600);
+        Permissions.setBasicFilePermissions(targetAFile, 0700);
+
+        JsyncResult result = new JsyncEngine()
+            .sync(this.syncSourceDir, this.syncTargetDir, JsyncMode.MERGE);
+
+        //assertThat(Permissions.getBasicFilePermBits(targetAFile)).isEqualTo(0700);
+        // no stats should have been updated???
+        assertThat(result.getStatsUpdated()).isEqualTo(0);
+        assertThat(result.getFilesCreated()).isEqualTo(0);
+        assertThat(result.getFilesDeleted()).isEqualTo(0);
+        assertThat(result.getFilesUpdated()).isEqualTo(0);
+    }
+
+    @Test
+    public void syncFileSkipPermissions() throws Exception {
+        assumeTrue(Permissions.isPosixDefaultFileSystem());
+
+        Path sourceAFile = this.syncSourceDir.resolve("a.txt");
+        Files.write(sourceAFile, "hello".getBytes());
+
+        Path targetAFile = this.syncTargetDir.resolve("a.txt");
+        Files.write(targetAFile, "hello".getBytes());
+
+        Permissions.setPosixFilePermissions(sourceAFile, 0755);
+        Permissions.setPosixFilePermissions(targetAFile, 0644);
 
         JsyncResult result = new JsyncEngine()
             .setSkipPermissions(true)
             .sync(sourceAFile, this.syncTargetDir, JsyncMode.NEST);
 
-        assertThat(Permissions.getPosixInt(targetAFile)).isEqualTo(0644);
+        assertThat(Permissions.getPosixFilePermBits(targetAFile)).isEqualTo(0644);
         assertThat(result.getStatsUpdated()).isEqualTo(0);
         assertThat(result.getFilesCreated()).isEqualTo(0);
         assertThat(result.getFilesDeleted()).isEqualTo(0);

@@ -1,11 +1,14 @@
 package com.fizzed.jsync.engine;
 
+import com.fizzed.jsync.vfs.StatUpdateOption;
 import com.fizzed.jsync.vfs.VirtualFileSystem;
 import com.fizzed.jsync.vfs.VirtualPath;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Collection;
+import java.util.Set;
 
 public interface JsyncEventHandler {
 
@@ -25,7 +28,7 @@ public interface JsyncEventHandler {
 
     void willTransferFile(VirtualPath sourcePath, VirtualPath targetPath, JsyncPathChanges changes);
 
-    void willUpdateStat(VirtualPath sourcePath, VirtualPath targetPath, JsyncPathChanges changes, boolean associatedWithFileModifiedOrDirCreated);
+    void willUpdateStat(VirtualPath sourcePath, VirtualPath targetPath, JsyncPathChanges changes, Collection<StatUpdateOption> options, boolean associatedWithFileModifiedOrDirCreated);
 
     void doCopy(InputStream input, OutputStream output, long knownContentLength) throws IOException;
 

@@ -233,6 +233,9 @@ public class JsyncEngine {
         // find the best common checksum
         this.negotiatedChecksum = this.negotiateChecksum(sourceVfs, targetVfs);
 
+        log.debug("Source filesystem stat mode: {}", sourceVfs.getStatModel());
+        log.debug("Target filesystem stat mode: {}", targetVfs.getStatModel());
+
         // build exclude and ignore paths
         if (this.excludes != null) {
             this.excludePaths = this.excludes.stream()
@@ -622,8 +625,6 @@ public class JsyncEngine {
     protected void updateStat(JsyncResult result, VirtualFileSystem sourceVfs, VirtualPath sourcePath,
                               VirtualFileSystem targetVfs, VirtualPath targetPath, JsyncPathChanges changes, boolean associatedWithFileModifiedOrDirCreated) throws IOException {
 
-        this.eventHandler.willUpdateStat(sourcePath, targetPath, changes, associatedWithFileModifiedOrDirCreated);
-
         final Set<StatUpdateOption> options = EnumSet.noneOf(StatUpdateOption.class);
         // in posix -> posix, we can use the stat of the source, but if we're changing permissions and a BASIC vfs
         // is involved, we only want to try and change the "owner" permission, and leave everything else as-is
@@ -636,7 +637,7 @@ public class JsyncEngine {
             // owner bits and retain the targets group & world bits
             if (sourceVfs.getStatModel() == StatModel.BASIC && targetPath.getStat() != null) {
                 // TODO: simplify this
-                log.info("current target perms: {}", targetPath.getStat().getPermissionsOctal());
+                //log.info("current target perms: {}", targetPath.getStat().getPermissionsOctal());
                 int targetPerms = targetPath.getStat().getPermissions();
                 int newTargetPerms = Permissions.mergeOwnerPermissions(sourcePath.getStat().getPermissions(), targetPerms);
                 updateStat = updateStat.withPermissions(newTargetPerms);
@@ -650,6 +651,7 @@ public class JsyncEngine {
 //        log.debug("Updating stats with options {} (perms {})", options, updateStat.getPermissionsOctal());
 
         if (!options.isEmpty()) {
+            this.eventHandler.willUpdateStat(sourcePath, targetPath, changes, options, associatedWithFileModifiedOrDirCreated);
             targetVfs.updateStat(targetPath, updateStat, options);
             result.incrementStatsUpdated();
         } else {
