@@ -559,7 +559,8 @@ public class JsyncEngine {
 
         // if we can take modified timestamps into account, this is a cheap way of figuring out a file changed
         // due to lack of millis precision in filesystems, we need to allow a larger delta of difference
-        if (Math.abs(sourceStat.getModifiedTime() - targetStat.getModifiedTime()) > 2000L) {
+        if (missing
+                || (Math.abs(sourceStat.getModifiedTime() - targetStat.getModifiedTime()) > 2000L)) {
             log.trace("Source path {} modified time {} != target modified time {} (maybe modified file)", sourcePath, sourceStat.getModifiedTime(), targetStat.getModifiedTime());
             timestamps = true;
         }
