@@ -39,7 +39,7 @@ class LocalVirtualFileSystemTest {
         Path file = this.sourceDir.resolve("test.txt");
         Files.write(file, "#!/bin/sh\necho hello".getBytes());
 
-        if (this.defaultVfs.getStatKind() == StatKind.POSIX) {
+        if (this.defaultVfs.getStatModel() == StatModel.POSIX) {
             // set permissions to 755 (rwxr-xr-x)
             Files.setPosixFilePermissions(file, PosixFilePermissions.fromString("rwxr-xr-x"));
 

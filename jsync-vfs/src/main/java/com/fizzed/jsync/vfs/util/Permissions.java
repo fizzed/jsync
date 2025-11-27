@@ -128,4 +128,32 @@ public class Permissions {
         }
     }
 
+    static public int mergeOwnerPermissions(int sourcePerms, int targetPerms) {
+        // 0700 is the octal mask for Owner Read/Write/Execute
+        final int OWNER_MASK = 0700;
+
+        // 1. Get only Owner bits from source
+        int ownerBits = sourcePerms & OWNER_MASK;
+
+        // 2. Clear Owner bits from target, keeping Group, World, and special bits (SUID/SGID)
+        int targetWithoutOwner = targetPerms & ~OWNER_MASK;
+
+        // 3. Combine them
+        return targetWithoutOwner | ownerBits;
+    }
+
+    static public int onlyOwnerPermissions(int sourcePerms) {
+        // 0700 is the octal mask for Owner Read/Write/Execute
+        final int OWNER_MASK = 0700;
+
+        // 1. Get only Owner bits from source
+        return sourcePerms & OWNER_MASK;
+    }
+
+    static public boolean isOwnerPermissionEqual(int perm1, int perm2) {
+        final int OWNER_MASK = 0700;
+        // Isolate owner bits for both and check equality
+        return (perm1 & OWNER_MASK) == (perm2 & OWNER_MASK);
+    }
+
 }

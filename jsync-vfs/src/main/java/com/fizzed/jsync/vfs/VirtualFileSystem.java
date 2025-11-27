@@ -18,7 +18,7 @@ public interface VirtualFileSystem extends AutoCloseable {
 
     boolean isCaseSensitive();
 
-    StatKind getStatKind();
+    StatModel getStatModel();
 
     boolean isChecksumSupported(Checksum checksum) throws IOException;
 

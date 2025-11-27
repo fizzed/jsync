@@ -161,9 +161,13 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
     }
 
     @Override
-    public StatKind getStatKind() {
+    public StatModel getStatModel() {
         // for now, we'll claim full POSIX as the sftp server itself does the POSIX translation
-        return StatKind.POSIX;
+        if (this.windows) {
+            return StatModel.BASIC;
+        } else {
+            return StatModel.POSIX;
+        }
     }
 
     @Override

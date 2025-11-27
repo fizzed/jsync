@@ -1,6 +1,7 @@
 package com.fizzed.jsync.engine;
 
 import com.fizzed.jsync.vfs.*;
+import com.fizzed.jsync.vfs.util.Permissions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,6 +11,7 @@ import java.io.OutputStream;
 import java.nio.file.Path;
 import java.util.*;
 
+import static com.fizzed.jsync.vfs.util.Permissions.isOwnerPermissionEqual;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
 
@@ -26,6 +28,8 @@ public class JsyncEngine {
     private boolean skipPermissions;
     private int maxFilesMaybeModifiedLimit;
     private List<String> excludes;
+    // when running a sync
+    private Checksum negotiatedChecksum;
 
     public JsyncEngine() {
         this.eventHandler = new DefaultJsyncEventHandler();
@@ -206,8 +210,8 @@ public class JsyncEngine {
         // Negotiate checksum methods between source and target filesystems if necessary
         //
 
-        // find the best common checksum to use
-        final Checksum checksum = this.negotiateChecksum(sourceVfs, targetVfs);
+        // find the best common checksum
+        this.negotiatedChecksum = this.negotiateChecksum(sourceVfs, targetVfs);
 
 
         final long now = System.currentTimeMillis();
@@ -235,11 +239,11 @@ public class JsyncEngine {
             // as we process files, only a subset may require more advanced methods of detecting whether they were modified
             // since that process could be "expensive", we keep a list of files on source/target that we will defer processing
             // until we have a chance to do some bulk processing of checksums, etc.
-            this.syncDirectory(0, result, excludePaths, deferredFiles, sourceVfs, sourcePathAbsFinal, targetVfs, targetPathAbsFinal, checksum);
+            this.syncDirectory(0, result, excludePaths, deferredFiles, sourceVfs, sourcePathAbsFinal, targetVfs, targetPathAbsFinal);
         } else {
             // we are only syncing a file, we may need to do some more expensive checks to determine if it needs to be updated
             this.syncFile(result, deferredFiles, sourceVfs, sourcePathAbsFinal, targetVfs, targetPathAbsFinal);
-            this.syncDeferredFiles(result, deferredFiles, sourceVfs, targetVfs, checksum);
+            this.syncDeferredFiles(result, deferredFiles, sourceVfs, targetVfs);
         }
 
         final long timeMillis = System.currentTimeMillis() - now;
@@ -271,7 +275,7 @@ public class JsyncEngine {
         }
 
         // detect what changes exists between source & target paths
-        final JsyncPathChanges changes = this.detectChanges(sourcePath, targetPath);
+        final JsyncPathChanges changes = this.detectChanges(sourceVfs, sourcePath, targetVfs, targetPath);
 
         // first, check if we should defer syncing the file till later on
         if (deferredFiles != null && changes.isDeferredProcessing(this.ignoreTimes)) {
@@ -290,23 +294,23 @@ public class JsyncEngine {
 
         if (changes.isStatModified(this.skipPermissions)) {
             // stat will need updated if the file is either new, updated, or if only the perms/times need updating
-            this.updateStat(result, sourcePath, targetVfs, targetPath, changes, fileWasTransferred);
+            this.updateStat(result, sourceVfs, sourcePath, targetVfs, targetPath, changes, fileWasTransferred);
         }
     }
 
-    protected void syncDeferredFiles(JsyncResult result, List<VirtualPathPair> deferredFiles, VirtualFileSystem sourceVfs, VirtualFileSystem targetVfs, Checksum checksum) throws IOException {
+    protected void syncDeferredFiles(JsyncResult result, List<VirtualPathPair> deferredFiles, VirtualFileSystem sourceVfs, VirtualFileSystem targetVfs) throws IOException {
         // we need to calculate checksums for source and target files
         final List<VirtualPath> sourceFiles = deferredFiles.stream()
             .map(VirtualPathPair::getSource)
             .collect(toList());
 
-        sourceVfs.checksums(checksum, sourceFiles);
+        sourceVfs.checksums(this.negotiatedChecksum, sourceFiles);
 
         final List<VirtualPath> targetFiles = deferredFiles.stream()
             .map(VirtualPathPair::getTarget)
             .collect(toList());
 
-        targetVfs.checksums(checksum, targetFiles);
+        targetVfs.checksums(this.negotiatedChecksum, targetFiles);
 
         result.incrementChecksums(targetFiles.size());
 
@@ -318,7 +322,7 @@ public class JsyncEngine {
         deferredFiles.clear();
     }
 
-    protected void syncDirectory(int level, JsyncResult result, List<VirtualPath> excludePaths, List<VirtualPathPair> deferredFiles, VirtualFileSystem sourceVfs, VirtualPath sourcePath, VirtualFileSystem targetVfs, VirtualPath targetPath, Checksum checksum) throws IOException {
+    protected void syncDirectory(int level, JsyncResult result, List<VirtualPath> excludePaths, List<VirtualPathPair> deferredFiles, VirtualFileSystem sourceVfs, VirtualPath sourcePath, VirtualFileSystem targetVfs, VirtualPath targetPath) throws IOException {
 
         // source needs to be a directory
         if (!sourcePath.isDirectory()) {
@@ -330,7 +334,8 @@ public class JsyncEngine {
             log.warn("Type mismatch: source {} is a directory but target '{}' is a file!", sourcePath, targetPath);
 
             if (!this.force) {
-                throw new PathOverwriteException("Type mismatch: source " + sourcePath + " is a directory but target " + targetPath + " is a file. Either delete the target file manually or use the 'force' option to have jsync do it for you.");
+                throw new PathOverwriteException("Type mismatch: source " + sourcePath + " is a directory but target " + targetPath + " is a file. " +
+                    "Either delete the target file manually or use the 'force' option to have jsync do it for you.");
             }
 
             // delete the target file
@@ -343,7 +348,7 @@ public class JsyncEngine {
         }
 
         // detect what changes exists between source & target paths
-        final JsyncPathChanges changes = this.detectChanges(sourcePath, targetPath);
+        final JsyncPathChanges changes = this.detectChanges(sourceVfs, sourcePath, targetVfs, targetPath);
 
         if (changes.isMissing()) {
             this.createDirectory(result, targetVfs, targetPath, false, false);
@@ -406,7 +411,7 @@ public class JsyncEngine {
             }
 
             if (sourceChildPath.isDirectory()) {
-                this.syncDirectory(level+1, result, excludePaths, deferredFiles, sourceVfs, sourceChildPath, targetVfs, targetChildPath, checksum);
+                this.syncDirectory(level+1, result, excludePaths, deferredFiles, sourceVfs, sourceChildPath, targetVfs, targetChildPath);
             } else {
                 // NOTE: it's possible syncFile will "defer" processing if a checksum is required
                 this.syncFile(result, deferredFiles, sourceVfs, sourceChildPath, targetVfs, targetChildPath);
@@ -415,7 +420,7 @@ public class JsyncEngine {
 
         // handle any deferred files that need to be processed
         if (level == 0 || deferredFiles.size() >= this.maxFilesMaybeModifiedLimit) {
-            this.syncDeferredFiles(result, deferredFiles, sourceVfs, targetVfs, checksum);
+            this.syncDeferredFiles(result, deferredFiles, sourceVfs, targetVfs);
         }
 
         // handle any paths that need to be deleted
@@ -444,11 +449,11 @@ public class JsyncEngine {
         // To successfully preserve directory timestamps, you must set the directory attributes after you have finished touching every single file inside that directory.
         if (changes.isStatModified(this.skipPermissions)) {
             // stat will need updated if the dir is new OR if the dir stats have changed
-            this.updateStat(result, sourcePath, targetVfs, targetPath, changes, changes.isMissing());
+            this.updateStat(result, sourceVfs, sourcePath, targetVfs, targetPath, changes, changes.isMissing());
         }
     }
 
-    protected JsyncPathChanges detectChanges(VirtualPath sourcePath, VirtualPath targetPath) throws IOException {
+    protected JsyncPathChanges detectChanges(VirtualFileSystem sourceVfs, VirtualPath sourcePath, VirtualFileSystem targetVfs, VirtualPath targetPath) throws IOException {
         // source "stats" MUST exist
         Objects.requireNonNull(sourcePath, "sourceFile cannot be null");
 
@@ -487,9 +492,23 @@ public class JsyncEngine {
             timestamps = true;
         }
 
-        if (!this.skipPermissions && sourcePath.getStat().getPermissions() != targetPath.getStat().getPermissions()) {
-            log.trace("Source path {} perms {} != target perms {}", sourcePath, sourcePath.getStat().getPermissions(), targetPath.getStat().getPermissions());
-            permissions = true;
+        if (!this.skipPermissions) {
+            // we only support syncing changes to POSIX targets, based on testing BASIC targets can break easily
+            // if posix -> posix we will compare entire permission value
+            // if basic -> posix we will only compare the owner permission bits
+            if (targetVfs.getStatModel() == StatModel.POSIX) {
+                if ((sourceVfs.getStatModel() == StatModel.POSIX && sourcePath.getStat().getPermissions() != targetPath.getStat().getPermissions())
+                    || (sourceVfs.getStatModel() == StatModel.BASIC && !isOwnerPermissionEqual(sourcePath.getStat().getPermissions(), targetPath.getStat().getPermissions()))) {
+                    log.trace("Source path {} perms {} != target perms {}", sourcePath, sourcePath.getStat().getPermissions(), targetPath.getStat().getPermissions());
+                    permissions = true;
+                }
+            }
+
+            /*if ((this.negotiatedStatModel == StatModel.POSIX && sourcePath.getStat().getPermissions() != targetPath.getStat().getPermissions())
+                || (targetVfs == StatModel.BASIC && !isOwnerPermissionEqual(sourcePath.getStat().getPermissions(), targetPath.getStat().getPermissions()))) {
+                log.trace("Source path {} perms {} != target perms {}", sourcePath, sourcePath.getStat().getPermissions(), targetPath.getStat().getPermissions());
+                permissions = true;
+            }*/
         }
 
         // if we have "cksum" values on both sides, we can compare those
@@ -545,7 +564,9 @@ public class JsyncEngine {
         }
     }
 
-    protected void updateStat(JsyncResult result, VirtualPath sourcePath, VirtualFileSystem targetVfs, VirtualPath targetPath, JsyncPathChanges changes, boolean associatedWithFileModifiedOrDirCreated) throws IOException {
+    protected void updateStat(JsyncResult result, VirtualFileSystem sourceVfs, VirtualPath sourcePath,
+                              VirtualFileSystem targetVfs, VirtualPath targetPath, JsyncPathChanges changes, boolean associatedWithFileModifiedOrDirCreated) throws IOException {
+
         this.eventHandler.willUpdateStat(sourcePath, targetPath, changes, associatedWithFileModifiedOrDirCreated);
 
         final Set<StatUpdateOption> options = EnumSet.noneOf(StatUpdateOption.class);
@@ -555,15 +576,42 @@ public class JsyncEngine {
 
         if (changes.isPermissionModified(this.skipPermissions)) {
             options.add(StatUpdateOption.PERMISSIONS);
+
+            // if the source of perms is BASIC and the target currently has perms, we will only want to change the
+            // owner bits and retain the targets group & world bits
+            if (sourceVfs.getStatModel() == StatModel.BASIC && targetPath.getStat() != null) {
+                log.info("current target perms: {}", targetPath.getStat().getPermissionsOctal());
+                int targetPerms = targetPath.getStat().getPermissions();
+                int newTargetPerms = Permissions.mergeOwnerPermissions(sourcePath.getStat().getPermissions(), targetPerms);
+//                int newTargetPerms = Permissions.onlyOwnerPermissions(sourcePath.getStat().getPermissions());
+                updateStat = updateStat.withPermissions(newTargetPerms);
+            }
+
+            // posix permissions we don't need to change, but if basic we only want to send over the "owner" perm
+            // and merge it with the existing source
+            /*log.info("targetVfs stat model: {}", targetVfs.getStatModel());
+            if (targetVfs.getStatModel() == StatModel.BASIC && targetPath.getStat() != null) {
+                log.info("current target perms: {}", targetPath.getStat().getPermissionsOctal());
+                int targetPerms = targetPath.getStat().getPermissions();
+                int newTargetPerms = Permissions.mergeOwnerPermissions(sourcePath.getStat().getPermissions(), targetPerms);
+//                int newTargetPerms = Permissions.onlyOwnerPermissions(sourcePath.getStat().getPermissions());
+                updateStat = updateStat.withPermissions(newTargetPerms);
+            }*/
         }
 
         if (changes.isTimestampsModified()) {
             options.add(StatUpdateOption.TIMESTAMPS);
         }
 
-        targetVfs.updateStat(targetPath, updateStat, options);
+        log.debug("Updating stats with options {} (perms {})", options, updateStat.getPermissionsOctal());
 
-        result.incrementStatsUpdated();
+        if (!options.isEmpty()) {
+            targetVfs.updateStat(targetPath, updateStat, options);
+
+            result.incrementStatsUpdated();
+        } else {
+            log.warn("updateStat was called, but nothing to update (options empty)");
+        }
     }
 
     protected void createDirectory(JsyncResult result, VirtualFileSystem vfs, VirtualPath path, boolean verifyParentExists, boolean parents) throws IOException {
@@ -636,41 +684,35 @@ public class JsyncEngine {
         log.debug("Negotiating checksums supported on both source and target filesystems...");
 
         // negotiate the checksums to use
-        Checksum checksum = null;
-        List<Checksum> sourceChecksumsSupported = new ArrayList<>();
-        List<Checksum> targetChecksumsSupported = new ArrayList<>();
+        final Set<Checksum> sourceChecksums = sourceVfs.getChecksumsSupported();
+        final Set<Checksum> targetChecksums = targetVfs.getChecksumsSupported();
+
+        log.debug("Source filesystem supports checksums {}", sourceChecksums);
+        log.debug("Target filesystem supports checksums {}", targetChecksums);
 
         for (Checksum preferredChecksum : this.preferredChecksums) {
-            log.debug("Detecting if {} checksum is supported on source/target", preferredChecksum);
-
-            // check supported checksums, keep a tally of which are supported by both sides, so we can log them out
-            boolean sourceSupported = sourceVfs.isChecksumSupported(preferredChecksum);
-
-            if (sourceSupported) {
-                sourceChecksumsSupported.add(preferredChecksum);
-            }
-
-            boolean targetSupported = targetVfs.isChecksumSupported(preferredChecksum);
-
-            if (targetSupported) {
-                targetChecksumsSupported.add(preferredChecksum);
-            }
-
-            log.debug("Detected {} checksum supported on source={}, target={}", preferredChecksum, sourceSupported, targetSupported);
-
-            if (sourceSupported && targetSupported) {
-                checksum = preferredChecksum;
-                break;
+            if  (sourceChecksums.contains(preferredChecksum) && targetChecksums.contains(preferredChecksum)) {
+                return preferredChecksum;
             }
         }
 
-        if (checksum == null) {
-            throw new IOException("Unable to find a checksum that is supported by both source and target filesystems. " +
-                "Source filesystem " + sourceVfs.getName() + " supports checksums " + sourceChecksumsSupported
-                + " and target filesystem " + targetVfs.getName() + " supports checksums " + targetChecksumsSupported);
+        throw new IOException("Unable to find a checksum that is supported by both source and target filesystems. " +
+            "Source filesystem " + sourceVfs.getName() + " supports checksums " + sourceChecksums
+            + " and target filesystem " + targetVfs.getName() + " supports checksums " + targetChecksums);
+    }
+
+    protected StatModel negotiateStatModel(VirtualFileSystem sourceVfs, VirtualFileSystem targetVfs) throws IOException {
+        // do both support posix?
+        if (sourceVfs.getStatModel() == StatModel.POSIX && targetVfs.getStatModel() == StatModel.POSIX) {
+            return StatModel.POSIX;
         }
 
-        return checksum;
+        // do either support basic?
+        if (sourceVfs.getStatModel() == StatModel.BASIC || targetVfs.getStatModel() == StatModel.BASIC) {
+            return StatModel.BASIC;
+        }
+
+        throw new IOException("Unable to find a stat model that is supported by source and target filesystems");
     }
 
     protected void sortPaths(List<VirtualPath> paths) {

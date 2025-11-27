@@ -68,11 +68,11 @@ public class LocalVirtualFileSystem extends AbstractVirtualFileSystem {
     }
 
     @Override
-    public StatKind getStatKind() {
+    public StatModel getStatModel() {
         if (this.posix) {
-            return StatKind.POSIX;
+            return StatModel.POSIX;
         } else {
-            return StatKind.BASIC;
+            return StatModel.BASIC;
         }
     }
 

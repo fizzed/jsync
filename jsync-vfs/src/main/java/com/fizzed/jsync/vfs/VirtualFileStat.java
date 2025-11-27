@@ -20,6 +20,10 @@ public class VirtualFileStat {
         this.permissions = permissions;
     }
 
+    public VirtualFileStat withPermissions(int permissions) {
+        return new VirtualFileStat(type, size, modifiedTime, accessedTime, permissions);
+    }
+
     public VirtualFileType getType() {
         return type;
     }

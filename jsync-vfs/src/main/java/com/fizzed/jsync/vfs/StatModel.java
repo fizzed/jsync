@@ -1,6 +1,6 @@
 package com.fizzed.jsync.vfs;
 
-public enum StatKind {
+public enum StatModel {
 
     POSIX,
     BASIC
