@@ -17,7 +17,7 @@ public class JsyncDemo {
 //        final String sourceDir = Paths.get("/home/jjlauer/test-sync").toString();
 //        final VirtualVolume source = localVolume(Paths.get("/home/jjlauer/workspace/third-party/jsch"));
 //        final String sourceDir = Paths.get("/home/jjlauer/workspace/third-party/coredns").toString();
-        final VirtualVolume source = localVolume(Paths.get("/home/jjlauer/workspace/third-party/nats.java"));
+        final VirtualVolume source = localVolume(Paths.get( System.getProperty("user.home") + "/workspace/third-party/nats.java"));
 //        final VirtualVolume source = localVolume(Paths.get("/home/jjlauer/workspace/third-party/tokyocabinet-1.4.48"));
 //        final String sourceDir = Paths.get("C:\\Users\\jjlauer\\test-sync").toString();
 //        final String sourceDir = Paths.get("C:\\Users\\jjlauer\\workspace\\third-party\\tokyocabinet-1.4.48").toString();
@@ -28,8 +28,8 @@ public class JsyncDemo {
         final String targetDir = "test-sync";
 
 //        final VirtualVolume target = sftpVolume("bmh-build-x64-win11-1", targetDir);
-        final VirtualVolume target = sftpVolume("bmh-dev-x64-indy25-1", targetDir);
-//        final VirtualVolume target = sftpVolume("bmh-dev-x64-fedora43-1", targetDir);
+//        final VirtualVolume target = sftpVolume("bmh-dev-x64-indy25-1", targetDir);
+        final VirtualVolume target = sftpVolume("bmh-dev-x64-fedora43-1", targetDir);
 //        final VirtualVolume target = sftpVolume("bmh-build-x64-freebsd15-1", targetDir);
 
         final JsyncResult result = new JsyncEngine()
@@ -39,6 +39,7 @@ public class JsyncDemo {
             .setDelete(true)
             .setParents(true)
             .setForce(true)
+            //.setSkipPermissions(true)
             //.setIgnoreTimes(true)
             //.setMaxFilesMaybeModifiedLimit(256)
 //            .setProgress(true)

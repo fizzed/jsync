@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.NoSuchFileException;
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 
 public interface VirtualFileSystem extends AutoCloseable {
 
@@ -12,9 +14,17 @@ public interface VirtualFileSystem extends AutoCloseable {
 
     boolean isRemote();
 
+    // features of this filesystem, which changes the behavior of the engine
+
     boolean isCaseSensitive();
 
-    default boolean areFileNamesEqual(String name1, String name2) {
+    StatModel getStatModel();
+
+    boolean isChecksumSupported(Checksum checksum) throws IOException;
+
+    Set<Checksum> getChecksumsSupported() throws IOException;
+
+    default boolean isFileNameEqual(String name1, String name2) {
         if (this.isCaseSensitive()) {
             return name1.equals(name2);
         } else {
@@ -52,7 +62,7 @@ public interface VirtualFileSystem extends AutoCloseable {
      */
     VirtualPath stat(VirtualPath path) throws IOException;
 
-    void updateStat(VirtualPath path, VirtualFileStat stats) throws IOException;
+    void updateStat(VirtualPath path, VirtualFileStat stats, Collection<StatUpdateOption> options) throws IOException;
 
     List<VirtualPath> ls(VirtualPath path) throws IOException;
 
@@ -67,8 +77,6 @@ public interface VirtualFileSystem extends AutoCloseable {
     void writeFile(InputStream input, VirtualPath path) throws IOException;
 
     OutputStream writeStream(VirtualPath path) throws IOException;
-
-    boolean isSupported(Checksum checksum) throws IOException;
 
     default void checksums(Checksum checksum, List<VirtualPath> paths) throws IOException {
         switch (checksum) {

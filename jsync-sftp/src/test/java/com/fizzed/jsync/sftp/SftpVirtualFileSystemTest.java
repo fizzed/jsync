@@ -135,6 +135,11 @@ class SftpVirtualFileSystemTest {
         assertThat(vpWithStat.getStat().getType()).isEqualTo(VirtualFileType.FILE);
         assertThat(vpWithStat.getStat().getSize()).isEqualTo(Files.size(sftpRootDir.resolve("root.txt")));
         assertThat(vpWithStat.getStat().getModifiedTime()).isCloseTo(Files.getLastModifiedTime(sftpRootDir.resolve("root.txt")).toMillis(), within(1500L));
+
+        // permissions
+        assertThat(vpWithStat.getStat().getPermissions()).isGreaterThan(0);
+        // if we got rid of the extra stuff stacked by sftp, this value should be less than this
+        assertThat(vpWithStat.getStat().getPermissions()).isLessThan(4096);
     }
 
     @Test

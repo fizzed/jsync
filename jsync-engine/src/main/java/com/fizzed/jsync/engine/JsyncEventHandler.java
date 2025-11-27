@@ -15,6 +15,8 @@ public interface JsyncEventHandler {
 
     void willExcludePath(VirtualPath targetPath);
 
+    void willIgnorePath(VirtualPath targetPath);
+
     void willCreateDirectory(VirtualPath targetPath, boolean recursively);
 
     void willDeleteDirectory(VirtualPath targetPath, boolean recursively);

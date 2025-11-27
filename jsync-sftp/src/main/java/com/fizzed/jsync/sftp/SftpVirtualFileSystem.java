@@ -17,6 +17,8 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 
+import static java.util.Arrays.asList;
+
 public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
     static private final Logger log = LoggerFactory.getLogger(SftpVirtualFileSystem.class);
 
@@ -109,27 +111,27 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
     static public SftpVirtualFileSystem open(Session ssh, boolean closeSsh, ChannelSftp sftp, boolean closeSftp) throws IOException {
         final String name = ssh.getHost();
 
-        log.info("Opening filesystem {}...", name);
+        log.debug("Opening filesystem {}...", name);
 
-        final String pwd2;
+        final String pwdRaw;
         try {
-            pwd2 = sftp.pwd();
+            pwdRaw = sftp.pwd();
         } catch (SftpException e) {
             throw toIOException(e);
         }
 
-        final VirtualPath pwd = VirtualPath.parse(pwd2, true);
+        final VirtualPath pwd = VirtualPath.parse(pwdRaw, true);
 
-        log.debug("Detected filesystem {} has pwd {}", name, pwd);
+        log.debug("Detected pwd {}", pwd);
 
         boolean windows = false;
 
         // this is likely a "windows" system if the 2nd char is :
-        if (pwd2.length() > 2 && pwd2.charAt(2) == ':') {
+        if (pwdRaw.length() > 2 && pwdRaw.charAt(2) == ':') {
             // TODO: should we confirm by running a command that exists only windows to confirm?
             // for now we'll just assume it is
             windows = true;
-            log.debug("Detected filesystem {} is running on windows (changes standard checksums, native filepaths, case sensitivity, etc.)", name);
+            log.debug("Detected windows-based sftp server");
         }
 
         return new SftpVirtualFileSystem(name, pwd, ssh, closeSsh, sftp, closeSftp, windows);
@@ -154,12 +156,22 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
     }
 
     @Override
-    public String toString() {
-        return this.getName();
+    public boolean isRemote() {
+        return true;
     }
 
     @Override
-    public boolean isSupported(Checksum checksum) throws IOException {
+    public StatModel getStatModel() {
+        // for now, we'll claim full POSIX as the sftp server itself does the POSIX translation
+        if (this.windows) {
+            return StatModel.BASIC;
+        } else {
+            return StatModel.POSIX;
+        }
+    }
+
+    @Override
+    public boolean isChecksumSupported(Checksum checksum) throws IOException {
         if (this.windows) {
             switch (checksum) {
                 case MD5:
@@ -189,6 +201,37 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
         }
     }
 
+    @Override
+    protected List<Checksum> doDetectChecksums() throws IOException {
+        // windows is easy, return what powershell supports
+        if (this.windows) {
+            return asList(Checksum.MD5, Checksum.SHA1);
+        }
+
+        // otherwise, we are on posix and we can actually check whether these would work or not
+        final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+        // check if anything is supported
+        int exitValue = this.exec(this.ssh, "which cksum md5sum sha1sum", null, baos, null);
+        if (exitValue != 0) {
+            return Collections.emptyList();
+        }
+
+        final String output = baos.toString(StandardCharsets.UTF_8.name());
+        final List<Checksum> checksums = new ArrayList<>();
+        if (output.contains("cksum")) {
+            checksums.add(Checksum.CK);
+        }
+        if (output.contains("md5sum")) {
+            checksums.add(Checksum.MD5);
+        }
+        if (output.contains("sha1sum")) {
+            checksums.add(Checksum.SHA1);
+        }
+
+        return checksums;
+    }
+
     public int getMaxCommandLength() {
         return maxCommandLength;
     }
@@ -198,10 +241,12 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
         return this;
     }
 
-    private VirtualPath toVirtualPathWithStats(VirtualPath path, SftpATTRS attrs) throws IOException {
+    protected VirtualPath withStats(VirtualPath path, SftpATTRS attrs) throws IOException {
         final long size = attrs.getSize();
         final long modifiedTime = attrs.getMTime() * 1000L;
         final long accessedTime = attrs.getATime() * 1000L;
+        // sftp stuffs extra stuff like the file type in the permissions value, we don't care about it
+        final int perms = attrs.getPermissions() & 07777;
 
         final VirtualFileType type;
         if (attrs.isDir()) {
@@ -214,14 +259,9 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
             type = VirtualFileType.OTHER;
         }
 
-        final VirtualFileStat stat = new VirtualFileStat(type, size, modifiedTime, accessedTime);
+        final VirtualFileStat stat = new VirtualFileStat(type, size, modifiedTime, accessedTime, perms);
 
         return new VirtualPath(path.getParentPath(), path.getName(), type == VirtualFileType.DIR, stat);
-    }
-
-    @Override
-    public boolean isRemote() {
-        return true;
     }
 
     @Override
@@ -229,29 +269,30 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
         try {
             final SftpATTRS attrs = this.sftp.lstat(path.toString());
 
-            return this.toVirtualPathWithStats(path, attrs);
+            return this.withStats(path, attrs);
         } catch (SftpException e) {
             throw toIOException(e);
         }
     }
 
     @Override
-    public void updateStat(VirtualPath path, VirtualFileStat stat) throws IOException {
+    public void updateStat(VirtualPath path, VirtualFileStat stat, Collection<StatUpdateOption> options) throws IOException {
         try {
+            final SftpATTRS attrs = SftpATTRSAccessor.createSftpATTRS();
+
             // TODO: are we updating uid/gid?
             Integer uid = null;
             Integer gid = null;
 
-            // TODO: are we updating permissions?
-            Integer perms = null;
+            if (options.contains(StatUpdateOption.PERMISSIONS)) {
+                attrs.setPERMISSIONS(stat.getPermissions());
+            }
 
-            // are we updating mtime/atime?d
-            int mtime = (int)(stat.getModifiedTime()/1000);
-            int atime = (int)(stat.getAccessedTime()/1000);
-
-            final SftpATTRS attrs = SftpATTRSAccessor.createSftpATTRS();
-
-            attrs.setACMODTIME(atime, mtime);
+            if (options.contains(StatUpdateOption.TIMESTAMPS)) {
+                int mtime = (int) (stat.getModifiedTime() / 1000);
+                int atime = (int) (stat.getAccessedTime() / 1000);
+                attrs.setACMODTIME(atime, mtime);
+            }
 
             this.sftp.setStat(path.toString(), attrs);
         } catch (SftpException e) {
@@ -277,7 +318,7 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
 
             // dir true/false doesn't matter, stats call next will correct it
             VirtualPath childPathWithoutStats = path.resolve(entry.getFilename(), false);
-            VirtualPath childPath = this.toVirtualPathWithStats(childPathWithoutStats, entry.getAttrs());
+            VirtualPath childPath = this.withStats(childPathWithoutStats, entry.getAttrs());
             childPaths.add(childPath);
         }
 
