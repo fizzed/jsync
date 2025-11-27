@@ -604,7 +604,7 @@ class JsyncEngineTest {
 
         Path sourceBDir = this.syncSourceDir.resolve("b");
         Path sourceCFile = this.syncSourceDir.resolve("b/c.txt");
-        Path sourceDFile = this.syncSourceDir.resolve("b/d.txt");
+        Path sourceDFile = this.syncSourceDir.resolve("b/sub/sub2/d.txt");
         this.writeFile(sourceCFile, "hello");
         this.writeFile(sourceDFile, "hello");
 
@@ -614,17 +614,18 @@ class JsyncEngineTest {
         this.writeFile(targetBFile, "hello");
         Path targetBDir = this.syncTargetDir.resolve("b");
         Path targetCDir = this.syncTargetDir.resolve("c");
-        Path targetEFile = this.syncTargetDir.resolve("c/e.txt");
+        Path targetEFile = this.syncTargetDir.resolve("c/sub/sub2/e.txt");
         this.writeFile(targetEFile, "hello");
 
         final JsyncResult result = new JsyncEngine()
-            .addIgnore("c")
-            .addIgnore("b")
+            .addIgnore("c")     // target dir should not be deleted
+            .addIgnore("b")     // b should not be synced to target
             .setDelete(true)
             .sync(this.syncSourceDir, this.syncTargetDir, JsyncMode.MERGE);
 
         assertThat(targetADir).isDirectory();
         assertThat(targetBDir).doesNotExist();
+        assertThat(targetCDir).exists();
         assertThat(targetEFile).isRegularFile();
     }
 
