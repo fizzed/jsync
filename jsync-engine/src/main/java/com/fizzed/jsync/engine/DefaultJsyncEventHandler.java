@@ -64,7 +64,7 @@ public class DefaultJsyncEventHandler implements JsyncEventHandler {
 
     @Override
     public void willUpdateStat(VirtualPath sourcePath, VirtualPath targetPath, JsyncPathChanges changes, Collection<StatUpdateOption> options, boolean associatedWithFileModifiedOrDirCreated) {
-        String message = options.stream().map(v -> v.name().toLowerCase()).collect(joining(","));
+        String message = options.stream().map(v -> v.name().toLowerCase()).collect(joining(", "));
         log.debug("Updating stat {} ({})", targetPath, message);
     }
 

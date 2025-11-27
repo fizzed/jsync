@@ -27,9 +27,9 @@ public class JsyncDemo {
 
         final String targetDir = "test-sync";
 
-        final VirtualVolume target = sftpVolume("bmh-build-x64-win11-1", targetDir);
+//        final VirtualVolume target = sftpVolume("bmh-build-x64-win11-1", targetDir);
 //        final VirtualVolume target = sftpVolume("bmh-dev-x64-indy25-1", targetDir);
-//        final VirtualVolume target = sftpVolume("bmh-dev-x64-fedora43-1", targetDir);
+        final VirtualVolume target = sftpVolume("bmh-dev-x64-fedora43-1", targetDir);
 //        final VirtualVolume target = sftpVolume("bmh-build-x64-freebsd15-1", targetDir);
 
         try {

@@ -660,8 +660,14 @@ public class JsyncEngine {
 
         if (!options.isEmpty()) {
             this.eventHandler.willUpdateStat(sourcePath, targetPath, changes, options, associatedWithFileModifiedOrDirCreated);
-            targetVfs.updateStat(targetPath, updateStat, options);
-            result.incrementStatsUpdated();
+            try {
+                // there are some reasons a stat update could fail (e.g. the user is currently in cmd.exe in that dir on windows)
+                targetVfs.updateStat(targetPath, updateStat, options);
+                result.incrementStatsUpdated();
+            } catch (IOException e) {
+                // we will log the error, but not throw an exception
+                log.warn("Failed to update stat for path {}: {} (ignoring since this is only a stat issue, not a file content problem)", targetPath, e.getMessage());
+            }
         } else {
             log.warn("updateStat was called, but nothing to update (options empty)");
         }

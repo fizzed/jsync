@@ -416,7 +416,7 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
         if (e.id == ChannelSftp.SSH_FX_NO_SUCH_FILE) {
             return new NoSuchFileException(e.getMessage());
         }
-        return new IOException(e.getMessage(), e);
+        return new IOException(e.getMessage() + " (error " + e.id + ")", e);
     }
 
     protected int exec(Session ssh, List<String> commands, InputStream input, OutputStream output, OutputStream error) throws IOException {
