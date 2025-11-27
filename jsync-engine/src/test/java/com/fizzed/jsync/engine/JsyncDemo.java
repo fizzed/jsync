@@ -32,27 +32,32 @@ public class JsyncDemo {
 //        final VirtualVolume target = sftpVolume("bmh-dev-x64-fedora43-1", targetDir);
 //        final VirtualVolume target = sftpVolume("bmh-build-x64-freebsd15-1", targetDir);
 
-        final JsyncResult result = new JsyncEngine()
-//            .preferredChecksums(Checksum.CK)
-//            .preferredChecksums(Checksum.MD5, Checksum.SHA1)
-//            .preferredChecksums(Checksum.SHA1)
-            .setDelete(true)
-            .setParents(true)
-            .setForce(true)
-            //.setSkipPermissions(true)
-            //.setIgnoreTimes(true)
-            //.setMaxFilesMaybeModifiedLimit(256)
-//            .setProgress(true)
-            .sync(source, target, JsyncMode.MERGE);
-//            .sync(targetVfs, targetDir, sourceVfs, sourceDir, JsyncMode.NEST);
+        try {
+            final JsyncResult result = new JsyncEngine()
+                //            .preferredChecksums(Checksum.CK)
+                //            .preferredChecksums(Checksum.MD5, Checksum.SHA1)
+                //            .preferredChecksums(Checksum.SHA1)
+                .setDelete(true)
+                .setParents(true)
+                .setForce(true)
+//                .addIgnore(".git")
+                //.setSkipPermissions(true)
+                //.setIgnoreTimes(true)
+                //.setMaxFilesMaybeModifiedLimit(256)
+                //            .setProgress(true)
+                .sync(source, target, JsyncMode.MERGE);
+            //            .sync(targetVfs, targetDir, sourceVfs, sourceDir, JsyncMode.NEST);
 
-        log.info("");
-        log.info("Done, sync successful!");
-        log.info("Result: {}", result);
-        log.info("");
+            log.info("");
+            log.info("Done, sync successful!");
+            log.info("Result: {}", result);
+            log.info("");
 
-        String rsyncCommand = "rsync -ivrt --delete --mkpath --force " + source + (result.getMode() == JsyncMode.NEST ? "" : "/") + " " + target + "/";
-        log.info("Rsync command: {}", rsyncCommand);
+            String rsyncCommand = "rsync -ivrt --delete --mkpath --force " + source + (result.getMode() == JsyncMode.NEST ? "" : "/") + " " + target + "/";
+            log.info("Rsync command: {}", rsyncCommand);
+        } catch (Error e) {
+            e.printStackTrace();
+        }
     }
 
 }
