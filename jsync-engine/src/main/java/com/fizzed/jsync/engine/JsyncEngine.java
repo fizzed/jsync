@@ -542,7 +542,7 @@ public class JsyncEngine {
             // we can immediately return the changes since the stat object doesn't exist
             //return new JsyncPathChanges(sourcePath.isDirectory(), true, false, false, false, false, null);
             // create a default stat for comparisons below
-            targetStat = new VirtualFileStat(sourceStat.getType(), -1L, -1L, -1L, -1);
+            targetStat = new VirtualFileStat(sourceStat.getType(), -1L, 0, 0, 0);
             missing = true;
         } else {
             targetStat = targetPath.getStat();
@@ -569,7 +569,8 @@ public class JsyncEngine {
             // if posix -> posix we will compare entire permission value
             // if basic -> posix we will only compare the owner permission bits
             if (targetVfs.getStatModel() == StatModel.POSIX) {
-                if ((sourceVfs.getStatModel() == StatModel.POSIX && sourceStat.getPermissions() != targetStat.getPermissions())
+                if (missing
+                    || (sourceVfs.getStatModel() == StatModel.POSIX && sourceStat.getPermissions() != targetStat.getPermissions())
                     || (sourceVfs.getStatModel() == StatModel.BASIC && !isOwnerPermissionEqual(sourceStat.getPermissions(), targetStat.getPermissions()))) {
                     log.trace("Source path {} perms {} != target perms {}", sourcePath, sourceStat.getPermissions(), targetStat.getPermissions());
                     permissions = true;
