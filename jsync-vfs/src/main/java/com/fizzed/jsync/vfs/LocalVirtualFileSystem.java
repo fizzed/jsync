@@ -39,18 +39,11 @@ public class LocalVirtualFileSystem extends AbstractVirtualFileSystem {
 
         final VirtualPath pwd = VirtualPath.parse(currentWorkingDir.toString(), true);
 
-        final boolean isPosixAttributes = FileSystems.getDefault()
-            .supportedFileAttributeViews()
-            .contains("posix");
+        final boolean posix = Permissions.isPosix();
 
-        log.debug("Detected filesystem {} has pwd={}, posix={}", name, pwd, isPosixAttributes);
+        log.debug("Detected filesystem {} with pwd={}, posix={}, caseSensitive={}", name, pwd, posix, posix);
 
-        // everything is case-sensitive except windows
-        final boolean caseSensitive = !System.getProperty("os.name").toLowerCase().contains("windows");
-
-        log.debug("Detected filesystem {} is case-sensitive={}", name, caseSensitive);
-
-        return new LocalVirtualFileSystem(name, pwd, caseSensitive, isPosixAttributes);
+        return new LocalVirtualFileSystem(name, pwd, posix, posix);
     }
 
     @Override
@@ -127,16 +120,14 @@ public class LocalVirtualFileSystem extends AbstractVirtualFileSystem {
             perms = Permissions.toPosixInt(posixAttrs.permissions());
         } else {
             // use basic permissions, usually ends up being 700 from what I can gather
-            final Set<PosixFilePermission> simulatedPosixPermissions = Permissions.toBasicPermissions(nativePath);
-            perms = Permissions.toPosixInt(simulatedPosixPermissions);
+            final Set<PosixFilePermission> basicPermissions = Permissions.toBasicPermissions(nativePath);
+            perms = Permissions.toPosixInt(basicPermissions);
         }
 
         final VirtualFileStat stat = new VirtualFileStat(type, size, modifiedTime, accessedTime, perms);
 
         return new VirtualPath(path.getParentPath(), path.getName(), type == VirtualFileType.DIR, stat);
     }
-
-
 
     @Override
     public VirtualPath stat(VirtualPath path) throws IOException {

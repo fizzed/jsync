@@ -4,6 +4,7 @@ import com.fizzed.crux.util.MoreFiles;
 import com.fizzed.crux.util.Resources;
 import com.fizzed.jsync.vfs.ParentDirectoryMissingException;
 import com.fizzed.jsync.vfs.PathOverwriteException;
+import com.fizzed.jsync.vfs.util.Permissions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -19,6 +20,7 @@ import java.time.temporal.ChronoUnit;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 class JsyncEngineTest {
     static private final Logger log = LoggerFactory.getLogger(JsyncEngineTest.class);
@@ -503,6 +505,53 @@ class JsyncEngineTest {
     }
 
     @Test
+    public void syncFilePermission() throws Exception {
+        assumeTrue(Permissions.isPosix());
+
+        Path sourceAFile = this.syncSourceDir.resolve("a.txt");
+        Files.write(sourceAFile, "hello".getBytes());
+
+        Path targetAFile = this.syncTargetDir.resolve("a.txt");
+        Files.write(targetAFile, "hello".getBytes());
+
+        Permissions.setPosixInt(sourceAFile, 0755);
+        Permissions.setPosixInt(targetAFile, 0644);
+
+        JsyncResult result = new JsyncEngine()
+            .sync(sourceAFile, this.syncTargetDir, JsyncMode.NEST);
+
+        assertThat(Permissions.getPosixInt(targetAFile)).isEqualTo(0755);
+        assertThat(result.getStatsUpdated()).isEqualTo(1);
+        assertThat(result.getFilesCreated()).isEqualTo(0);
+        assertThat(result.getFilesDeleted()).isEqualTo(0);
+        assertThat(result.getFilesUpdated()).isEqualTo(0);
+    }
+
+    @Test
+    public void syncFileSkipPermissions() throws Exception {
+        assumeTrue(Permissions.isPosix());
+
+        Path sourceAFile = this.syncSourceDir.resolve("a.txt");
+        Files.write(sourceAFile, "hello".getBytes());
+
+        Path targetAFile = this.syncTargetDir.resolve("a.txt");
+        Files.write(targetAFile, "hello".getBytes());
+
+        Permissions.setPosixInt(sourceAFile, 0755);
+        Permissions.setPosixInt(targetAFile, 0644);
+
+        JsyncResult result = new JsyncEngine()
+            .setSkipPermissions(true)
+            .sync(sourceAFile, this.syncTargetDir, JsyncMode.NEST);
+
+        assertThat(Permissions.getPosixInt(targetAFile)).isEqualTo(0644);
+        assertThat(result.getStatsUpdated()).isEqualTo(0);
+        assertThat(result.getFilesCreated()).isEqualTo(0);
+        assertThat(result.getFilesDeleted()).isEqualTo(0);
+        assertThat(result.getFilesUpdated()).isEqualTo(0);
+    }
+
+    @Test
     public void syncExcludeDir() throws Exception {
         Path sourceADir = this.syncSourceDir.resolve("a");
         Path sourceBFile = this.syncSourceDir.resolve("a/b.txt");
@@ -545,6 +594,38 @@ class JsyncEngineTest {
         assertThat(result.getFilesCreated()).isEqualTo(1);
         assertThat(this.syncTargetDir.resolve("a/c.txt")).doesNotExist();
         assertThat(this.syncTargetDir.resolve("a/b.txt")).hasContent("hello");
+    }
+
+    @Test
+    public void syncIgnoreDir() throws Exception {
+        Path sourceADir = this.syncSourceDir.resolve("a");
+        Path sourceBFile = this.syncSourceDir.resolve("a/b.txt");
+        this.writeFile(sourceBFile, "hello");
+
+        Path sourceBDir = this.syncSourceDir.resolve("b");
+        Path sourceCFile = this.syncSourceDir.resolve("b/c.txt");
+        Path sourceDFile = this.syncSourceDir.resolve("b/d.txt");
+        this.writeFile(sourceCFile, "hello");
+        this.writeFile(sourceDFile, "hello");
+
+        // with directory "a" fully excluded, it actually should be deleted with --exclude
+        Path targetADir = this.syncTargetDir.resolve("a");
+        Path targetBFile = this.syncTargetDir.resolve("a/b.txt");
+        this.writeFile(targetBFile, "hello");
+        Path targetBDir = this.syncTargetDir.resolve("b");
+        Path targetCDir = this.syncTargetDir.resolve("c");
+        Path targetEFile = this.syncTargetDir.resolve("c/e.txt");
+        this.writeFile(targetEFile, "hello");
+
+        final JsyncResult result = new JsyncEngine()
+            .addIgnore("c")
+            .addIgnore("b")
+            .setDelete(true)
+            .sync(this.syncSourceDir, this.syncTargetDir, JsyncMode.MERGE);
+
+        assertThat(targetADir).isDirectory();
+        assertThat(targetBDir).doesNotExist();
+        assertThat(targetEFile).isRegularFile();
     }
 
 }

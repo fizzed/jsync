@@ -28,8 +28,12 @@ public class JsyncEngine {
     private boolean skipPermissions;
     private int maxFilesMaybeModifiedLimit;
     private List<String> excludes;
+    private List<String> ignores;
     // when running a sync
     private Checksum negotiatedChecksum;
+    private List<VirtualPath> excludePaths;
+    private List<VirtualPath> ignoreSourcePaths;
+    private List<VirtualPath> ignoreTargetPaths;
 
     public JsyncEngine() {
         this.eventHandler = new DefaultJsyncEventHandler();
@@ -40,7 +44,6 @@ public class JsyncEngine {
         this.skipPermissions = false;
         this.preferredChecksums = new ArrayList<>(asList(Checksum.CK, Checksum.MD5));
         this.maxFilesMaybeModifiedLimit = 256;
-        this.excludes = null;
     }
 
     public JsyncEventHandler getEventHandler() {
@@ -134,6 +137,23 @@ public class JsyncEngine {
         return this;
     }
 
+    public List<String> getIgnores() {
+        return ignores;
+    }
+
+    public JsyncEngine setIgnores(List<String> ignores) {
+        this.ignores = ignores;
+        return this;
+    }
+
+    public JsyncEngine addIgnore(String ignore) {
+        if (this.ignores == null) {
+            this.ignores = new ArrayList<>();
+        }
+        this.ignores.add(ignore);
+        return this;
+    }
+
     public JsyncResult sync(Path sourcePath, Path targetPath, JsyncMode mode) throws IOException {
         // local -> local
         final LocalVirtualFileSystem localVfs = LocalVirtualFileSystem.open();
@@ -213,6 +233,30 @@ public class JsyncEngine {
         // find the best common checksum
         this.negotiatedChecksum = this.negotiateChecksum(sourceVfs, targetVfs);
 
+        // build exclude and ignore paths
+        if (this.excludes != null) {
+            this.excludePaths = this.excludes.stream()
+                .map(VirtualPath::parse)
+                .map(sourcePathAbsFinal::resolve)
+                .collect(toList());
+        } else {
+            this.excludePaths = Collections.emptyList();
+        }
+
+        if (this.ignores != null) {
+            this.ignoreSourcePaths = this.ignores.stream()
+                .map(VirtualPath::parse)
+                .map(sourcePathAbsFinal::resolve)
+                .collect(toList());
+            this.ignoreTargetPaths = this.ignores.stream()
+                .map(VirtualPath::parse)
+                .map(targetPathAbsFinal::resolve)
+                .collect(toList());
+        } else {
+            this.ignoreSourcePaths = Collections.emptyList();
+            this.ignoreTargetPaths = Collections.emptyList();
+        }
+
 
         final long now = System.currentTimeMillis();
 
@@ -239,7 +283,7 @@ public class JsyncEngine {
             // as we process files, only a subset may require more advanced methods of detecting whether they were modified
             // since that process could be "expensive", we keep a list of files on source/target that we will defer processing
             // until we have a chance to do some bulk processing of checksums, etc.
-            this.syncDirectory(0, result, excludePaths, deferredFiles, sourceVfs, sourcePathAbsFinal, targetVfs, targetPathAbsFinal);
+            this.syncDirectory(0, result, deferredFiles, sourceVfs, sourcePathAbsFinal, targetVfs, targetPathAbsFinal);
         } else {
             // we are only syncing a file, we may need to do some more expensive checks to determine if it needs to be updated
             this.syncFile(result, deferredFiles, sourceVfs, sourcePathAbsFinal, targetVfs, targetPathAbsFinal);
@@ -322,7 +366,7 @@ public class JsyncEngine {
         deferredFiles.clear();
     }
 
-    protected void syncDirectory(int level, JsyncResult result, List<VirtualPath> excludePaths, List<VirtualPathPair> deferredFiles, VirtualFileSystem sourceVfs, VirtualPath sourcePath, VirtualFileSystem targetVfs, VirtualPath targetPath) throws IOException {
+    protected void syncDirectory(int level, JsyncResult result, List<VirtualPathPair> deferredFiles, VirtualFileSystem sourceVfs, VirtualPath sourcePath, VirtualFileSystem targetVfs, VirtualPath targetPath) throws IOException {
 
         // source needs to be a directory
         if (!sourcePath.isDirectory()) {
@@ -365,10 +409,18 @@ public class JsyncEngine {
         List<VirtualPath> sourceChildPaths = sourceVfs.ls(sourcePath).stream()
             // apply filter to source files if they are on the exclude list
             .filter(v -> {
-                //log.info("Checking for exlcude of path {} with excludes {}", v, excludePaths);
-                for (VirtualPath excludePath : excludePaths) {
-                    if (v.startsWith(excludePath)) {
+                for (VirtualPath p : this.excludePaths) {
+                    if (v.startsWith(p)) {
                         this.eventHandler.willExcludePath(v);
+                        return false;
+                    }
+                }
+                return true;
+            })
+            .filter(v -> {
+                for (VirtualPath p : this.ignoreSourcePaths) {
+                    if (v.startsWith(p)) {
+                        this.eventHandler.willIgnorePath(v);
                         return false;
                     }
                 }
@@ -389,7 +441,16 @@ public class JsyncEngine {
             })
             .collect(toList());
 
-        final List<VirtualPath> targetChildPaths = targetVfs.ls(targetPath);
+        final List<VirtualPath> targetChildPaths = targetVfs.ls(targetPath).stream()
+            .filter(v -> {
+                for (VirtualPath p : this.ignoreTargetPaths) {
+                    if (v.startsWith(p)) {
+                        return false;
+                    }
+                }
+                return true;
+            })
+            .collect(toList());
 
         // its better to work with all dirs first, then files, so we sort the files before we process them
         this.sortPaths(sourceChildPaths);
@@ -411,7 +472,7 @@ public class JsyncEngine {
             }
 
             if (sourceChildPath.isDirectory()) {
-                this.syncDirectory(level+1, result, excludePaths, deferredFiles, sourceVfs, sourceChildPath, targetVfs, targetChildPath);
+                this.syncDirectory(level+1, result, deferredFiles, sourceVfs, sourceChildPath, targetVfs, targetChildPath);
             } else {
                 // NOTE: it's possible syncFile will "defer" processing if a checksum is required
                 this.syncFile(result, deferredFiles, sourceVfs, sourceChildPath, targetVfs, targetChildPath);

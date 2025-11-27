@@ -25,8 +25,13 @@ public class DefaultJsyncEventHandler implements JsyncEventHandler {
     }
 
     @Override
-    public void willExcludePath(VirtualPath targetPath) {
-        log.debug("Excluding path {}", targetPath);
+    public void willExcludePath(VirtualPath sourcePath) {
+        log.debug("Excluding path {}", sourcePath);
+    }
+
+    @Override
+    public void willIgnorePath(VirtualPath sourcePath) {
+        log.debug("Ignoring path {}", sourcePath);
     }
 
     @Override

@@ -2,6 +2,7 @@ package com.fizzed.jsync.vfs.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermission;
@@ -10,6 +11,22 @@ import java.util.HashSet;
 import java.util.Set;
 
 public class Permissions {
+
+    static public boolean isPosix() {
+        return FileSystems.getDefault()
+            .supportedFileAttributeViews()
+            .contains("posix");
+    }
+
+    static public int getPosixInt(Path path) throws IOException {
+        final Set<PosixFilePermission> permissions = Files.getPosixFilePermissions(path);
+        return toPosixInt(permissions);
+    }
+
+    static public void setPosixInt(Path path, int perms) throws IOException {
+        final Set<PosixFilePermission> permissions = toPosixFilePermissions(perms);
+        Files.setPosixFilePermissions(path, permissions);
+    }
 
     /**
      * Converts a set of {@link PosixFilePermission} to its corresponding POSIX integer representation.
