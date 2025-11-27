@@ -142,14 +142,6 @@ public class Permissions {
         return targetWithoutOwner | ownerBits;
     }
 
-    static public int onlyOwnerPermissions(int sourcePerms) {
-        // 0700 is the octal mask for Owner Read/Write/Execute
-        final int OWNER_MASK = 0700;
-
-        // 1. Get only Owner bits from source
-        return sourcePerms & OWNER_MASK;
-    }
-
     static public boolean isOwnerPermissionEqual(int perm1, int perm2) {
         final int OWNER_MASK = 0700;
         // Isolate owner bits for both and check equality

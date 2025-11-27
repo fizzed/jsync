@@ -292,7 +292,7 @@ public class JsyncEngine {
             if (log.isDebugEnabled()) log.debug("Verified file {} ({})", targetPath, changes);
         }
 
-        if (changes.isStatModified(this.skipPermissions)) {
+        if (changes.isStatModified()) {
             // stat will need updated if the file is either new, updated, or if only the perms/times need updating
             this.updateStat(result, sourceVfs, sourcePath, targetVfs, targetPath, changes, fileWasTransferred);
         }
@@ -447,7 +447,7 @@ public class JsyncEngine {
 
         // last step is to update the stat of the target dir
         // To successfully preserve directory timestamps, you must set the directory attributes after you have finished touching every single file inside that directory.
-        if (changes.isStatModified(this.skipPermissions)) {
+        if (changes.isStatModified()) {
             // stat will need updated if the dir is new OR if the dir stats have changed
             this.updateStat(result, sourceVfs, sourcePath, targetVfs, targetPath, changes, changes.isMissing());
         }
@@ -503,12 +503,6 @@ public class JsyncEngine {
                     permissions = true;
                 }
             }
-
-            /*if ((this.negotiatedStatModel == StatModel.POSIX && sourcePath.getStat().getPermissions() != targetPath.getStat().getPermissions())
-                || (targetVfs == StatModel.BASIC && !isOwnerPermissionEqual(sourcePath.getStat().getPermissions(), targetPath.getStat().getPermissions()))) {
-                log.trace("Source path {} perms {} != target perms {}", sourcePath, sourcePath.getStat().getPermissions(), targetPath.getStat().getPermissions());
-                permissions = true;
-            }*/
         }
 
         // if we have "cksum" values on both sides, we can compare those
@@ -574,40 +568,28 @@ public class JsyncEngine {
         // is involved, we only want to try and change the "owner" permission, and leave everything else as-is
         VirtualFileStat updateStat = sourcePath.getStat();
 
-        if (changes.isPermissionModified(this.skipPermissions)) {
+        if (changes.isPermissionModified()) {
             options.add(StatUpdateOption.PERMISSIONS);
 
             // if the source of perms is BASIC and the target currently has perms, we will only want to change the
             // owner bits and retain the targets group & world bits
             if (sourceVfs.getStatModel() == StatModel.BASIC && targetPath.getStat() != null) {
+                // TODO: simplify this
                 log.info("current target perms: {}", targetPath.getStat().getPermissionsOctal());
                 int targetPerms = targetPath.getStat().getPermissions();
                 int newTargetPerms = Permissions.mergeOwnerPermissions(sourcePath.getStat().getPermissions(), targetPerms);
-//                int newTargetPerms = Permissions.onlyOwnerPermissions(sourcePath.getStat().getPermissions());
                 updateStat = updateStat.withPermissions(newTargetPerms);
             }
-
-            // posix permissions we don't need to change, but if basic we only want to send over the "owner" perm
-            // and merge it with the existing source
-            /*log.info("targetVfs stat model: {}", targetVfs.getStatModel());
-            if (targetVfs.getStatModel() == StatModel.BASIC && targetPath.getStat() != null) {
-                log.info("current target perms: {}", targetPath.getStat().getPermissionsOctal());
-                int targetPerms = targetPath.getStat().getPermissions();
-                int newTargetPerms = Permissions.mergeOwnerPermissions(sourcePath.getStat().getPermissions(), targetPerms);
-//                int newTargetPerms = Permissions.onlyOwnerPermissions(sourcePath.getStat().getPermissions());
-                updateStat = updateStat.withPermissions(newTargetPerms);
-            }*/
         }
 
         if (changes.isTimestampsModified()) {
             options.add(StatUpdateOption.TIMESTAMPS);
         }
 
-        log.debug("Updating stats with options {} (perms {})", options, updateStat.getPermissionsOctal());
+//        log.debug("Updating stats with options {} (perms {})", options, updateStat.getPermissionsOctal());
 
         if (!options.isEmpty()) {
             targetVfs.updateStat(targetPath, updateStat, options);
-
             result.incrementStatsUpdated();
         } else {
             log.warn("updateStat was called, but nothing to update (options empty)");

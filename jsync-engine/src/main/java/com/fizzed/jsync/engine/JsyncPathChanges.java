@@ -79,9 +79,9 @@ public class JsyncPathChanges {
             && checksum == null;
     }
 
-    public boolean isPermissionModified(boolean skipPermissions) {
+    public boolean isPermissionModified() {
         return this.missing
-            || (!skipPermissions && this.permissions);
+            || this.permissions;
     }
 
     public boolean isTimestampsModified() {
@@ -89,10 +89,10 @@ public class JsyncPathChanges {
             || this.timestamps;
     }
 
-    public boolean isStatModified(boolean skipPermissions) {
+    public boolean isStatModified() {
         return this.missing
             || this.timestamps
-            || (!skipPermissions && this.permissions)
+            || this.permissions
             || this.ownership;
     }
 
