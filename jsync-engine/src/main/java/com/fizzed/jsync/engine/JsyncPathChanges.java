@@ -99,7 +99,7 @@ public class JsyncPathChanges {
             }
             sb.append("size mismatch");
         }
-        if (!this.missing && this.timestamps) {      // this is always true on missing files, which is covered by the missing flag
+        if (!this.missing && this.timestamps && this.checksum == null) {      // this is always true on missing files, which is covered by the missing flag
             if (sb.length() > 0) {
                 sb.append(", ");
             }
