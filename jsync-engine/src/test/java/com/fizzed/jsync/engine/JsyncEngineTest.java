@@ -4,6 +4,8 @@ import com.fizzed.crux.util.MoreFiles;
 import com.fizzed.crux.util.Resources;
 import com.fizzed.jsync.vfs.ParentDirectoryMissingException;
 import com.fizzed.jsync.vfs.PathOverwriteException;
+import com.fizzed.jsync.vfs.StatUpdateOption;
+import com.fizzed.jsync.vfs.VirtualPath;
 import com.fizzed.jsync.vfs.util.Permissions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,6 +18,9 @@ import java.nio.file.Path;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -534,21 +539,28 @@ class JsyncEngineTest {
 
         Path sourceAFile = this.syncSourceDir.resolve("a.txt");
         Files.write(sourceAFile, "hello".getBytes());
+        Path sourceBFile = this.syncSourceDir.resolve("b.txt");
+        Files.write(sourceBFile, "hello".getBytes());
 
         Path targetAFile = this.syncTargetDir.resolve("a.txt");
         Files.write(targetAFile, "hello".getBytes());
 
-        // do any permission changes work?
-        Permissions.setBasicFilePermissions(sourceAFile, 0600);
-        Permissions.setBasicFilePermissions(targetAFile, 0700);
-
+        final Set<StatUpdateOption> allOptions = new HashSet<StatUpdateOption>();
         JsyncResult result = new JsyncEngine()
+            .setEventHandler(new DefaultJsyncEventHandler() {
+                @Override
+                public void willUpdateStat(VirtualPath sourcePath, VirtualPath targetPath, JsyncPathChanges changes, Collection<StatUpdateOption> options, boolean associatedWithFileModifiedOrDirCreated) {
+                    super.willUpdateStat(sourcePath, targetPath, changes, options, associatedWithFileModifiedOrDirCreated);
+                    // capture what options were changed
+                    allOptions.addAll(options);
+                }
+            })
             .sync(this.syncSourceDir, this.syncTargetDir, JsyncMode.MERGE);
 
-        //assertThat(Permissions.getBasicFilePermBits(targetAFile)).isEqualTo(0700);
-        // no stats should have been updated???
-        assertThat(result.getStatsUpdated()).isEqualTo(0);
-        assertThat(result.getFilesCreated()).isEqualTo(0);
+        // confirm that NO permissions were changed on anything
+        assertThat(allOptions).doesNotContain(StatUpdateOption.PERMISSIONS);
+        assertThat(result.getStatsUpdated()).isEqualTo(1);      // timestamps would change on new file
+        assertThat(result.getFilesCreated()).isEqualTo(1);
         assertThat(result.getFilesDeleted()).isEqualTo(0);
         assertThat(result.getFilesUpdated()).isEqualTo(0);
     }

@@ -526,33 +526,41 @@ public class JsyncEngine {
             throw new IllegalArgumentException("sourceFile must have a 'stat' object");
         }
 
-        // if the targetFile "stat" are null then we know it must not even exist yet
-        if (targetPath == null || targetPath.getStat() == null) {
-            log.trace("Target path {} missing (new dir/file)", targetPath);
-            // we can immediately return the changes since the stat object doesn't exist
-            return new JsyncPathChanges(sourcePath.isDirectory(), true, false, false, false, false, null);
-        }
-
-        // the remaining properties can all now be calculate
+        final VirtualFileStat sourceStat = sourcePath.getStat();
+        // the changes we calculate
+        boolean missing = false;
         boolean size = false;
         boolean timestamps = false;
         boolean ownership = false;
         boolean permissions = false;
         Boolean checksums = null;           // unknown
+        final VirtualFileStat targetStat;
+
+        // if the targetFile "stat" are null then we know that file/dir is missing
+        if (targetPath == null || targetPath.getStat() == null) {
+            log.trace("Target path {} missing (new dir/file)", targetPath);
+            // we can immediately return the changes since the stat object doesn't exist
+            //return new JsyncPathChanges(sourcePath.isDirectory(), true, false, false, false, false, null);
+            // create a default stat for comparisons below
+            targetStat = new VirtualFileStat(sourceStat.getType(), -1L, -1L, -1L, -1);
+            missing = true;
+        } else {
+            targetStat = targetPath.getStat();
+        }
 
         // are file sizes different? if they are then this is a cheap way of figuring out a sync is needed
         // only try to compare sizes if they are not dirs
-        if (!sourcePath.isDirectory()) {
-            if (sourcePath.getStat().getSize() != targetPath.getStat().getSize()) {
-                log.trace("Source path {} size {} != target size {} (modified file)", sourcePath, sourcePath.getStat().getSize(), targetPath.getStat().getSize());
+        if (!missing && !sourcePath.isDirectory()) {
+            if (sourceStat.getSize() != targetStat.getSize()) {
+                log.trace("Source path {} size {} != target size {} (modified file)", sourcePath, sourceStat.getSize(), targetStat.getSize());
                 size = true;
             }
         }
 
         // if we can take modified timestamps into account, this is a cheap way of figuring out a file changed
         // due to lack of millis precision in filesystems, we need to allow a larger delta of difference
-        if (Math.abs(sourcePath.getStat().getModifiedTime() - targetPath.getStat().getModifiedTime()) > 2000L) {
-            log.trace("Source path {} modified time {} != target modified time {} (maybe modified file)", sourcePath, sourcePath.getStat().getModifiedTime(), targetPath.getStat().getModifiedTime());
+        if (Math.abs(sourceStat.getModifiedTime() - targetStat.getModifiedTime()) > 2000L) {
+            log.trace("Source path {} modified time {} != target modified time {} (maybe modified file)", sourcePath, sourceStat.getModifiedTime(), targetStat.getModifiedTime());
             timestamps = true;
         }
 
@@ -561,18 +569,18 @@ public class JsyncEngine {
             // if posix -> posix we will compare entire permission value
             // if basic -> posix we will only compare the owner permission bits
             if (targetVfs.getStatModel() == StatModel.POSIX) {
-                if ((sourceVfs.getStatModel() == StatModel.POSIX && sourcePath.getStat().getPermissions() != targetPath.getStat().getPermissions())
-                    || (sourceVfs.getStatModel() == StatModel.BASIC && !isOwnerPermissionEqual(sourcePath.getStat().getPermissions(), targetPath.getStat().getPermissions()))) {
-                    log.trace("Source path {} perms {} != target perms {}", sourcePath, sourcePath.getStat().getPermissions(), targetPath.getStat().getPermissions());
+                if ((sourceVfs.getStatModel() == StatModel.POSIX && sourceStat.getPermissions() != targetStat.getPermissions())
+                    || (sourceVfs.getStatModel() == StatModel.BASIC && !isOwnerPermissionEqual(sourceStat.getPermissions(), targetStat.getPermissions()))) {
+                    log.trace("Source path {} perms {} != target perms {}", sourcePath, sourceStat.getPermissions(), targetStat.getPermissions());
                     permissions = true;
                 }
             }
         }
 
         // if we have "cksum" values on both sides, we can compare those
-        if (sourcePath.getStat().getCksum() != null && targetPath.getStat().getCksum() != null) {
-            if (!sourcePath.getStat().getCksum().equals(targetPath.getStat().getCksum())) {
-                log.trace("Source path {} cksum {} != target chksum {} (modified file)", sourcePath, sourcePath.getStat().getCksum(), targetPath.getStat().getCksum());
+        if (sourceStat.getCksum() != null && targetStat.getCksum() != null) {
+            if (!sourceStat.getCksum().equals(targetStat.getCksum())) {
+                log.trace("Source path {} cksum {} != target chksum {} (modified file)", sourcePath, sourceStat.getCksum(), targetStat.getCksum());
                 checksums = true;
             } else {
                 checksums = false;
@@ -580,9 +588,9 @@ public class JsyncEngine {
         }
 
         // if we have "md5" values on both sides, we can compare those
-        if (sourcePath.getStat().getMd5() != null && targetPath.getStat().getMd5() != null) {
-            if (!sourcePath.getStat().getMd5().equalsIgnoreCase(targetPath.getStat().getMd5())) {
-                log.trace("Source path {} md5 {} != target md5 {} (modified file)", sourcePath, sourcePath.getStat().getMd5(), targetPath.getStat().getMd5());
+        if (sourceStat.getMd5() != null && targetStat.getMd5() != null) {
+            if (!sourceStat.getMd5().equalsIgnoreCase(targetStat.getMd5())) {
+                log.trace("Source path {} md5 {} != target md5 {} (modified file)", sourcePath, sourceStat.getMd5(), targetStat.getMd5());
                 checksums = true;
             } else {
                 checksums = false;
@@ -590,16 +598,16 @@ public class JsyncEngine {
         }
 
         // if we have "sha1" values on both sides, we can compare those
-        if (sourcePath.getStat().getSha1() != null && targetPath.getStat().getSha1() != null) {
-            if (!sourcePath.getStat().getSha1().equalsIgnoreCase(targetPath.getStat().getSha1())) {
-                log.trace("Source path {} sha1 {} != target sha1 {} (modified file)", sourcePath, sourcePath.getStat().getSha1(), targetPath.getStat().getSha1());
+        if (sourceStat.getSha1() != null && targetStat.getSha1() != null) {
+            if (!sourceStat.getSha1().equalsIgnoreCase(targetStat.getSha1())) {
+                log.trace("Source path {} sha1 {} != target sha1 {} (modified file)", sourcePath, sourceStat.getSha1(), targetStat.getSha1());
                 checksums = true;
             } else {
                 checksums = false;
             }
         }
 
-        return new JsyncPathChanges(sourcePath.isDirectory(), false, size, timestamps, permissions, ownership, checksums);
+        return new JsyncPathChanges(sourcePath.isDirectory(), missing, size, timestamps, permissions, ownership, checksums);
     }
 
     protected void transferFile(JsyncResult result, VirtualFileSystem sourceVfs, VirtualPath sourceFile, VirtualFileSystem targetVfs, VirtualPath targetFile, JsyncPathChanges changes) throws IOException {
@@ -630,7 +638,7 @@ public class JsyncEngine {
         // is involved, we only want to try and change the "owner" permission, and leave everything else as-is
         VirtualFileStat updateStat = sourcePath.getStat();
 
-        if (changes.isPermissionModified()) {
+        if (changes.isPermissions()) {
             options.add(StatUpdateOption.PERMISSIONS);
 
             // if the source of perms is BASIC and the target currently has perms, we will only want to change the
@@ -644,7 +652,7 @@ public class JsyncEngine {
             }
         }
 
-        if (changes.isTimestampsModified()) {
+        if (changes.isTimestamps()) {
             options.add(StatUpdateOption.TIMESTAMPS);
         }
 

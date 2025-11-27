@@ -79,19 +79,8 @@ public class JsyncPathChanges {
             && checksum == null;
     }
 
-    public boolean isPermissionModified() {
-        return this.missing
-            || this.permissions;
-    }
-
-    public boolean isTimestampsModified() {
-        return this.missing
-            || this.timestamps;
-    }
-
     public boolean isStatModified() {
-        return this.missing
-            || this.timestamps
+        return this.timestamps
             || this.permissions
             || this.ownership;
     }
@@ -110,19 +99,19 @@ public class JsyncPathChanges {
             }
             sb.append("size mismatch");
         }
-        if (this.timestamps) {
+        if (!this.missing && this.timestamps) {      // this is always true on missing files, which is covered by the missing flag
             if (sb.length() > 0) {
                 sb.append(", ");
             }
             sb.append("times mismatch");
         }
-        if (this.permissions) {
+        if (!this.missing && this.permissions) {     // do not bother printing this out if its due to being missing
             if (sb.length() > 0) {
                 sb.append(", ");
             }
             sb.append("perms mismatch");
         }
-        if (this.ownership) {
+        if (!this.missing && this.ownership) {
             if (sb.length() > 0) {
                 sb.append(", ");
             }
