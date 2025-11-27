@@ -272,7 +272,7 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
     }
 
     @Override
-    public void updateStat(VirtualPath path, VirtualFileStat stat) throws IOException {
+    public void updateStat(VirtualPath path, VirtualFileStat stat, Collection<StatUpdateOption> options) throws IOException {
         try {
             final SftpATTRS attrs = SftpATTRSAccessor.createSftpATTRS();
 
@@ -280,15 +280,15 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
             Integer uid = null;
             Integer gid = null;
 
-            // TODO: are we updating permissions?
-//            Integer perms = null;
-            int perms = stat.getPermissions();
-            attrs.setPERMISSIONS(perms);
+            if (options.contains(StatUpdateOption.PERMISSIONS)) {
+                attrs.setPERMISSIONS(stat.getPermissions());
+            }
 
-            // are we updating mtime/atime?d
-            int mtime = (int)(stat.getModifiedTime()/1000);
-            int atime = (int)(stat.getAccessedTime()/1000);
-            attrs.setACMODTIME(atime, mtime);
+            if (options.contains(StatUpdateOption.TIMESTAMPS)) {
+                int mtime = (int) (stat.getModifiedTime() / 1000);
+                int atime = (int) (stat.getAccessedTime() / 1000);
+                attrs.setACMODTIME(atime, mtime);
+            }
 
             this.sftp.setStat(path.toString(), attrs);
         } catch (SftpException e) {

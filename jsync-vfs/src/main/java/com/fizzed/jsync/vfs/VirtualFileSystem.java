@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.NoSuchFileException;
+import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
@@ -61,7 +62,7 @@ public interface VirtualFileSystem extends AutoCloseable {
      */
     VirtualPath stat(VirtualPath path) throws IOException;
 
-    void updateStat(VirtualPath path, VirtualFileStat stats) throws IOException;
+    void updateStat(VirtualPath path, VirtualFileStat stats, Collection<StatUpdateOption> options) throws IOException;
 
     List<VirtualPath> ls(VirtualPath path) throws IOException;
 

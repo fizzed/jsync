@@ -39,6 +39,7 @@ public class JsyncDemo {
             .setDelete(true)
             .setParents(true)
             .setForce(true)
+            //.setSkipPermissions(true)
             //.setIgnoreTimes(true)
             //.setMaxFilesMaybeModifiedLimit(256)
 //            .setProgress(true)

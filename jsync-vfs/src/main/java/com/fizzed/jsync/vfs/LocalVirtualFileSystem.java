@@ -10,10 +10,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.*;
 import java.nio.file.attribute.*;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Stream;
 
 import static java.util.Arrays.asList;
@@ -130,7 +127,7 @@ public class LocalVirtualFileSystem extends AbstractVirtualFileSystem {
             perms = Permissions.toPosixInt(posixAttrs.permissions());
         } else {
             // use basic permissions, usually ends up being 700 from what I can gather
-            final Set<PosixFilePermission> simulatedPosixPermissions = Permissions.getPosixPermissions(nativePath);
+            final Set<PosixFilePermission> simulatedPosixPermissions = Permissions.toBasicPermissions(nativePath);
             perms = Permissions.toPosixInt(simulatedPosixPermissions);
         }
 
@@ -147,20 +144,38 @@ public class LocalVirtualFileSystem extends AbstractVirtualFileSystem {
     }
 
     @Override
-    public void updateStat(VirtualPath path, VirtualFileStat stat) throws IOException {
+    public void updateStat(VirtualPath path, VirtualFileStat stat, Collection<StatUpdateOption> options) throws IOException {
         final Path nativePath = this.toNativePath(path);
 
-        //  Get the "View" (This is a lightweight handle to the attributes)
-        BasicFileAttributeView view = Files.getFileAttributeView(nativePath, BasicFileAttributeView.class);
+        final PosixFileAttributeView posixView;
+        final BasicFileAttributeView view;
+        if (this.posix) {
+            posixView = Files.getFileAttributeView(nativePath, PosixFileAttributeView.class);
+            view = posixView;
+        } else {
+            posixView = null;
+            view = Files.getFileAttributeView(nativePath, BasicFileAttributeView.class);
+        }
 
-        // 2. Prepare the times
-        FileTime newModifiedTime = FileTime.fromMillis(stat.getModifiedTime());
-        FileTime newAccessedTime = FileTime.fromMillis(stat.getAccessedTime());
+        if (options.contains(StatUpdateOption.PERMISSIONS)) {
+            final Set<PosixFilePermission> posixFilePermissions = Permissions.toPosixFilePermissions(stat.getPermissions());
+            if (posixView != null) {
+                posixView.setPermissions(posixFilePermissions);
+            } else {
+                Permissions.setBasicPermissions(nativePath, posixFilePermissions);
+            }
+        }
 
-        // 3. Update all three in ONE operation
-        // Signature: setTimes(lastModified, lastAccess, createTime)
-        // Pass 'null' if you want to leave a specific timestamp unchanged.
-        view.setTimes(newModifiedTime, newAccessedTime, null);
+        if (options.contains(StatUpdateOption.TIMESTAMPS)) {
+            // 2. Prepare the times
+            FileTime newModifiedTime = FileTime.fromMillis(stat.getModifiedTime());
+            FileTime newAccessedTime = FileTime.fromMillis(stat.getAccessedTime());
+
+            // 3. Update all three in ONE operation
+            // Signature: setTimes(lastModified, lastAccess, createTime)
+            // Pass 'null' if you want to leave a specific timestamp unchanged.
+            view.setTimes(newModifiedTime, newAccessedTime, null);
+        }
     }
 
     @Override

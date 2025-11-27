@@ -8,10 +8,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
@@ -26,6 +23,7 @@ public class JsyncEngine {
     private boolean force;
     private boolean parents;
     private boolean ignoreTimes;
+    private boolean skipPermissions;
     private int maxFilesMaybeModifiedLimit;
     private List<String> excludes;
 
@@ -35,6 +33,7 @@ public class JsyncEngine {
         this.force = false;
         this.parents = false;
         this.ignoreTimes = false;
+        this.skipPermissions = false;
         this.preferredChecksums = new ArrayList<>(asList(Checksum.CK, Checksum.MD5));
         this.maxFilesMaybeModifiedLimit = 256;
         this.excludes = null;
@@ -83,6 +82,15 @@ public class JsyncEngine {
 
     public JsyncEngine setIgnoreTimes(boolean ignoreTimes) {
         this.ignoreTimes = ignoreTimes;
+        return this;
+    }
+
+    public boolean isSkipPermissions() {
+        return skipPermissions;
+    }
+
+    public JsyncEngine setSkipPermissions(boolean skipPermissions) {
+        this.skipPermissions = skipPermissions;
         return this;
     }
 
@@ -280,7 +288,7 @@ public class JsyncEngine {
             if (log.isDebugEnabled()) log.debug("Verified file {} ({})", targetPath, changes);
         }
 
-        if (changes.isStatModified()) {
+        if (changes.isStatModified(this.skipPermissions)) {
             // stat will need updated if the file is either new, updated, or if only the perms/times need updating
             this.updateStat(result, sourcePath, targetVfs, targetPath, changes, fileWasTransferred);
         }
@@ -434,7 +442,7 @@ public class JsyncEngine {
 
         // last step is to update the stat of the target dir
         // To successfully preserve directory timestamps, you must set the directory attributes after you have finished touching every single file inside that directory.
-        if (changes.isStatModified()) {
+        if (changes.isStatModified(this.skipPermissions)) {
             // stat will need updated if the dir is new OR if the dir stats have changed
             this.updateStat(result, sourcePath, targetVfs, targetPath, changes, changes.isMissing());
         }
@@ -479,7 +487,7 @@ public class JsyncEngine {
             timestamps = true;
         }
 
-        if (sourcePath.getStat().getPermissions() != targetPath.getStat().getPermissions()) {
+        if (!this.skipPermissions && sourcePath.getStat().getPermissions() != targetPath.getStat().getPermissions()) {
             log.trace("Source path {} perms {} != target perms {}", sourcePath, sourcePath.getStat().getPermissions(), targetPath.getStat().getPermissions());
             permissions = true;
         }
@@ -540,7 +548,20 @@ public class JsyncEngine {
     protected void updateStat(JsyncResult result, VirtualPath sourcePath, VirtualFileSystem targetVfs, VirtualPath targetPath, JsyncPathChanges changes, boolean associatedWithFileModifiedOrDirCreated) throws IOException {
         this.eventHandler.willUpdateStat(sourcePath, targetPath, changes, associatedWithFileModifiedOrDirCreated);
 
-        targetVfs.updateStat(targetPath, sourcePath.getStat());
+        final Set<StatUpdateOption> options = EnumSet.noneOf(StatUpdateOption.class);
+        // in posix -> posix, we can use the stat of the source, but if we're changing permissions and a BASIC vfs
+        // is involved, we only want to try and change the "owner" permission, and leave everything else as-is
+        VirtualFileStat updateStat = sourcePath.getStat();
+
+        if (changes.isPermissionModified(this.skipPermissions)) {
+            options.add(StatUpdateOption.PERMISSIONS);
+        }
+
+        if (changes.isTimestampsModified()) {
+            options.add(StatUpdateOption.TIMESTAMPS);
+        }
+
+        targetVfs.updateStat(targetPath, updateStat, options);
 
         result.incrementStatsUpdated();
     }

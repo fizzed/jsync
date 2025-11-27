@@ -1,5 +1,6 @@
 package com.fizzed.jsync.vfs.util;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -72,7 +73,7 @@ public class Permissions {
         return perms;
     }
 
-    static public Set<PosixFilePermission> getPosixPermissions(Path path) throws IOException {
+    static public Set<PosixFilePermission> toBasicPermissions(Path path) throws IOException {
         // 2. On Windows: Synthesize permissions based on "DOS" attributes
         Set<PosixFilePermission> perms = new HashSet<>();
 
@@ -97,6 +98,34 @@ public class Permissions {
         // Usually we don't give OTHERS_WRITE on a best-effort basis
 
         return perms;
+    }
+
+    static public void setBasicPermissions(Path path, Set<PosixFilePermission> perms) {
+        File file = path.toFile();
+
+        // --- READ ---
+        if (perms.contains(PosixFilePermission.OTHERS_READ)) {
+            // If World needs read, open to Everyone (false = not owner only)
+            file.setReadable(true, false);
+        } else {
+            // Otherwise, set specifically for Owner (true = owner only)
+            // If OWNER_READ is missing, this sets readable to FALSE for owner
+            file.setReadable(perms.contains(PosixFilePermission.OWNER_READ), true);
+        }
+
+        // --- WRITE ---
+        if (perms.contains(PosixFilePermission.OTHERS_WRITE)) {
+            file.setWritable(true, false);
+        } else {
+            file.setWritable(perms.contains(PosixFilePermission.OWNER_WRITE), true);
+        }
+
+        // --- EXECUTE ---
+        if (perms.contains(PosixFilePermission.OTHERS_EXECUTE)) {
+            file.setExecutable(true, false);
+        } else {
+            file.setExecutable(perms.contains(PosixFilePermission.OWNER_EXECUTE), true);
+        }
     }
 
 }
