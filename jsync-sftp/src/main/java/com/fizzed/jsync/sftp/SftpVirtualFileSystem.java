@@ -170,7 +170,7 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
         }
     }
 
-    @Override
+    /*@Override
     public boolean isChecksumSupported(Checksum checksum) throws IOException {
         if (this.windows) {
             switch (checksum) {
@@ -199,7 +199,7 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
             default:
                 return false;
         }
-    }
+    }*/
 
     @Override
     protected List<Checksum> doDetectChecksums() throws IOException {
@@ -213,20 +213,36 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
 
         // check if anything is supported
         int exitValue = this.exec(this.ssh, "which cksum md5sum sha1sum", null, baos, null);
-        if (exitValue != 0) {
+        // on macos, openbsd, even if it finds cksum but not md5sum, it returns an exitValue of != 0
+        /*if (exitValue != 0) {
             return Collections.emptyList();
-        }
+        }*/
 
-        final String output = baos.toString(StandardCharsets.UTF_8.name());
+        /**
+         * OpenBsd:
+         * which cksum md5sum
+         * /bin/cksum
+         * which: md5sum: Command not found.
+         *
+         * MacOS:
+         * which cksum md5sum sha1sum
+         * /usr/bin/cksum
+         * md5sum not found
+         * sha1sum not found
+         */
+
         final List<Checksum> checksums = new ArrayList<>();
-        if (output.contains("cksum")) {
-            checksums.add(Checksum.CK);
-        }
-        if (output.contains("md5sum")) {
-            checksums.add(Checksum.MD5);
-        }
-        if (output.contains("sha1sum")) {
-            checksums.add(Checksum.SHA1);
+        final String output = baos.toString(StandardCharsets.UTF_8.name());
+        // process each line of output
+        for (String line : output.split("\n")) {
+            line = line.trim();
+            if (line.endsWith("/cksum")) {
+                checksums.add(Checksum.CK);
+            } else if (line.endsWith("/md5sum")) {
+                checksums.add(Checksum.MD5);
+            } else if (line.endsWith("/sha1sum")) {
+                checksums.add(Checksum.SHA1);
+            }
         }
 
         return checksums;
