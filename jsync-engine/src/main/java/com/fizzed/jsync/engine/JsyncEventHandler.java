@@ -16,9 +16,11 @@ public interface JsyncEventHandler {
 
     void willEnd(VirtualFileSystem sourceVfs, VirtualPath sourcePath, VirtualFileSystem targetVfs, VirtualPath targetPath, JsyncResult result, long timeMillis);
 
-    void willExcludePath(VirtualPath targetPath);
+    void willExcludePath(VirtualPath sourcePath);
 
-    void willIgnorePath(VirtualPath targetPath);
+    void willIgnoreSourcePath(VirtualPath sourcePath);
+
+    void willIgnoreTargetPath(VirtualPath targetPath);
 
     void willCreateDirectory(VirtualPath targetPath, boolean recursively);
 

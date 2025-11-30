@@ -2,6 +2,7 @@ package com.fizzed.jsync.engine;
 
 import com.fizzed.jsync.vfs.*;
 import com.fizzed.jsync.vfs.util.Permissions;
+import com.fizzed.jsync.vfs.util.VirtualPathMatchers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -31,9 +32,10 @@ public class JsyncEngine {
     private List<String> ignores;
     // when running a sync
     private Checksum negotiatedChecksum;
-    private List<VirtualPath> excludePaths;
-    private List<VirtualPath> ignoreSourcePaths;
-    private List<VirtualPath> ignoreTargetPaths;
+    private VirtualPathMatchers excludeMatchers;
+    private VirtualPathMatchers ignoreMatchers;
+    private VirtualPath sourceRootPath;
+    private VirtualPath targetRootPath;
 
     public JsyncEngine() {
         this.eventHandler = new DefaultJsyncEventHandler();
@@ -225,6 +227,9 @@ public class JsyncEngine {
         final VirtualPath sourcePathAbsFinal = sourcePathAbs.normalize();
         final VirtualPath targetPathAbsFinal = targetPathAbs.normalize();
 
+        this.sourceRootPath = sourcePathAbsFinal;
+        this.targetRootPath = targetPathAbsFinal;
+
 
         //
         // Negotiate checksum methods between source and target filesystems if necessary
@@ -236,29 +241,12 @@ public class JsyncEngine {
         log.debug("Source filesystem stat mode: {}", sourceVfs.getStatModel());
         log.debug("Target filesystem stat mode: {}", targetVfs.getStatModel());
 
-        // build exclude and ignore paths
-        if (this.excludes != null) {
-            this.excludePaths = this.excludes.stream()
-                .map(VirtualPath::parse)
-                .map(sourcePathAbsFinal::resolve)
-                .collect(toList());
-        } else {
-            this.excludePaths = Collections.emptyList();
-        }
+        // build exclude and ignore matchers
+        this.excludeMatchers = VirtualPathMatchers.compile(this.excludes);
+        this.ignoreMatchers = VirtualPathMatchers.compile(this.ignores);
 
-        if (this.ignores != null) {
-            this.ignoreSourcePaths = this.ignores.stream()
-                .map(VirtualPath::parse)
-                .map(sourcePathAbsFinal::resolve)
-                .collect(toList());
-            this.ignoreTargetPaths = this.ignores.stream()
-                .map(VirtualPath::parse)
-                .map(targetPathAbsFinal::resolve)
-                .collect(toList());
-        } else {
-            this.ignoreSourcePaths = Collections.emptyList();
-            this.ignoreTargetPaths = Collections.emptyList();
-        }
+        log.debug("Using exclude matchers: {}", this.excludeMatchers);
+        log.debug("Using ignore matchers: {}", this.ignoreMatchers);
 
 
         final long now = System.currentTimeMillis();
@@ -272,17 +260,6 @@ public class JsyncEngine {
         final List<VirtualPathPair> deferredFiles = new ArrayList<>();
 
         if (sourcePathAbsFinal.isDirectory()) {
-            // any excludes, let's resolve them against pwd of the source to make it easier to exclude them
-            final List<VirtualPath> excludePaths;
-            if (this.excludes != null) {
-                excludePaths = this.excludes.stream()
-                    .map(VirtualPath::parse)
-                    .map(sourcePathAbsFinal::resolve)
-                    .collect(toList());
-            } else {
-                excludePaths = Collections.emptyList();
-            }
-
             // as we process files, only a subset may require more advanced methods of detecting whether they were modified
             // since that process could be "expensive", we keep a list of files on source/target that we will defer processing
             // until we have a chance to do some bulk processing of checksums, etc.
@@ -409,23 +386,20 @@ public class JsyncEngine {
 
 
         // we need a list of files in both directories, so we can see what to add/delete
-        List<VirtualPath> sourceChildPaths = sourceVfs.ls(sourcePath).stream()
+        final List<VirtualPath> sourceChildPaths = sourceVfs.ls(sourcePath).stream()
             // apply filter to source files if they are on the exclude list
             .filter(v -> {
-                for (VirtualPath p : this.excludePaths) {
-                    if (v.startsWith(p)) {
-                        this.eventHandler.willExcludePath(v);
-                        return false;
-                    }
+                if (this.excludeMatchers.matches(this.sourceRootPath, v)) {
+                    this.eventHandler.willExcludePath(v);
+                    return false;
                 }
                 return true;
             })
             .filter(v -> {
-                for (VirtualPath p : this.ignoreSourcePaths) {
-                    if (v.startsWith(p)) {
-                        this.eventHandler.willIgnorePath(v);
-                        return false;
-                    }
+                log.debug("Checking if should ignore: root={}, path={}", this.sourceRootPath, v);
+                if (this.ignoreMatchers.matches(this.sourceRootPath, v)) {
+                    this.eventHandler.willIgnoreSourcePath(v);
+                    return false;
                 }
                 return true;
             })
@@ -446,10 +420,9 @@ public class JsyncEngine {
 
         final List<VirtualPath> targetChildPaths = targetVfs.ls(targetPath).stream()
             .filter(v -> {
-                for (VirtualPath p : this.ignoreTargetPaths) {
-                    if (v.startsWith(p)) {
-                        return false;
-                    }
+                if (this.ignoreMatchers.matches(this.targetRootPath, v)) {
+                    this.eventHandler.willIgnoreTargetPath(v);
+                    return false;
                 }
                 return true;
             })
