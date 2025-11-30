@@ -8,9 +8,11 @@ import java.nio.file.Paths;
 
 public class VirtualPathMatcher {
 
+    private final String globRule;
     private final PathMatcher matcher;
 
-    public VirtualPathMatcher(PathMatcher matcher) {
+    public VirtualPathMatcher(String globRule, PathMatcher matcher) {
+        this.globRule = globRule;
         this.matcher = matcher;
     }
 
@@ -33,6 +35,11 @@ public class VirtualPathMatcher {
         }
 
         return this.matcher.matches(Paths.get(relativePath));
+    }
+
+    @Override
+    public String toString() {
+        return this.globRule;
     }
 
     static public VirtualPathMatcher compile(String rule) {
@@ -85,9 +92,10 @@ public class VirtualPathMatcher {
 
         finalGlob.append("}");
 
-        PathMatcher matcher = FileSystems.getDefault().getPathMatcher(finalGlob.toString());
+        String globRule = finalGlob.toString();
+        PathMatcher matcher = FileSystems.getDefault().getPathMatcher(globRule);
 
-        return new  VirtualPathMatcher(matcher);
+        return new  VirtualPathMatcher(globRule, matcher);
     }
 
 }

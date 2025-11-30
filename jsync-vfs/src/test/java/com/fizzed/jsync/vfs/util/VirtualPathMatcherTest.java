@@ -48,6 +48,19 @@ class VirtualPathMatcherTest {
     }
 
     @Test
+    public void absoluteAnywhereRuleForDirectoryWithLeadingDot() {
+        VirtualPath rootPath = VirtualPath.parse("/home/jjlauer");
+
+        VirtualPathMatcher matcher = VirtualPathMatcher.compile(".buildx");
+
+        assertThat(matcher.matches(rootPath, VirtualPath.parse("/home/jjlauer/.buildx"))).isTrue();
+        assertThat(matcher.matches(rootPath, VirtualPath.parse("/home/jjlauer/.buildx/a.txt"))).isFalse();
+        assertThat(matcher.matches(rootPath, VirtualPath.parse("/home/jjlauer/target2"))).isFalse();
+        assertThat(matcher.matches(rootPath, VirtualPath.parse("/home/jjlauer/2target"))).isFalse();
+        assertThat(matcher.matches(rootPath, VirtualPath.parse("/home/jjlauer/sub/.buildx"))).isTrue();
+    }
+
+    @Test
     public void absoluteAnywhereRuleForFile() {
         VirtualPath rootPath = VirtualPath.parse("/home/jjlauer");
 

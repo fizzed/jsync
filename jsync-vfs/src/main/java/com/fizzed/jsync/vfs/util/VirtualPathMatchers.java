@@ -7,19 +7,24 @@ import java.util.List;
 
 public class VirtualPathMatchers {
 
-    private final List<VirtualPathMatcher> matchers = new ArrayList<>();
+    private final List<VirtualPathMatcher> matchers;
 
     public VirtualPathMatchers(List<VirtualPathMatcher> matchers) {
-        this.matchers.addAll(matchers);
+        this.matchers = matchers;
     }
 
     public boolean matches(VirtualPath rootPath, VirtualPath path) {
-        for  (VirtualPathMatcher matcher : matchers) {
+        for  (VirtualPathMatcher matcher : this.matchers) {
             if (matcher.matches(rootPath, path)) {
                 return true;
             }
         }
         return false;
+    }
+
+    @Override
+    public String toString() {
+        return this.matchers.toString();
     }
 
     static public VirtualPathMatchers compile(List<String> rules) {

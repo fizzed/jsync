@@ -245,6 +245,9 @@ public class JsyncEngine {
         this.excludeMatchers = VirtualPathMatchers.compile(this.excludes);
         this.ignoreMatchers = VirtualPathMatchers.compile(this.ignores);
 
+        log.debug("excludeMatchers: {}", this.excludeMatchers);
+        log.debug("ignoreMatchers: {}", this.ignoreMatchers);
+
 
         final long now = System.currentTimeMillis();
 
@@ -393,6 +396,7 @@ public class JsyncEngine {
                 return true;
             })
             .filter(v -> {
+                log.debug("Checking if should ignore: root={}, path={}", this.sourceRootPath, v);
                 if (this.ignoreMatchers.matches(this.sourceRootPath, v)) {
                     this.eventHandler.willIgnoreSourcePath(v);
                     return false;
