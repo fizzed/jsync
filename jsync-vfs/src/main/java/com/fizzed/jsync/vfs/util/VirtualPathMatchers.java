@@ -1,37 +1,35 @@
 package com.fizzed.jsync.vfs.util;
 
-import java.nio.file.FileSystems;
-import java.nio.file.PathMatcher;
+import com.fizzed.jsync.vfs.VirtualPath;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class VirtualPathMatchers {
 
-    
+    private final List<VirtualPathMatcher> matchers = new ArrayList<>();
 
-    static public PathMatcher compileRule(String rule) {
-        String glob = rule.trim();
+    public VirtualPathMatchers(List<VirtualPathMatcher> matchers) {
+        this.matchers.addAll(matchers);
+    }
 
-        // 1. Handle directory-only rules (e.g., "build/")
-        // Git implies "everything inside this directory"
-        if (glob.endsWith("/")) {
-            glob = glob + "**";
-        }
-
-        // 2. Handle "rooted" vs "anywhere" rules
-        // If it starts with '/', it matches from the root only.
-        // If NOT, it matches anywhere (e.g., "*.log" -> "** /*.log")
-        if (glob.startsWith("/")) {
-            // Remove leading slash for Java PathMatcher consistency on relative paths
-            glob = glob.substring(1);
-        } else {
-            // If it's not rooted, allow it to match deep in the tree
-            // Example: "tmp" becomes "**/tmp"
-            if (!glob.startsWith("**/") && !glob.equals("*")) {
-                glob = "**/" + glob;
+    public boolean matches(VirtualPath rootPath, VirtualPath path) {
+        for  (VirtualPathMatcher matcher : matchers) {
+            if (matcher.matches(rootPath, path)) {
+                return true;
             }
         }
+        return false;
+    }
 
-        // Create the matcher using "glob" syntax
-        return FileSystems.getDefault().getPathMatcher("glob:" + glob);
+    static public VirtualPathMatchers compile(List<String> rules) {
+        List<VirtualPathMatcher> matchers = new ArrayList<>();
+        if (rules != null) {
+            for (String rule : rules) {
+                matchers.add(VirtualPathMatcher.compile(rule));
+            }
+        }
+        return new VirtualPathMatchers(matchers);
     }
 
 }
