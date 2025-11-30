@@ -245,8 +245,8 @@ public class JsyncEngine {
         this.excludeMatchers = VirtualPathMatchers.compile(this.excludes);
         this.ignoreMatchers = VirtualPathMatchers.compile(this.ignores);
 
-        log.debug("excludeMatchers: {}", this.excludeMatchers);
-        log.debug("ignoreMatchers: {}", this.ignoreMatchers);
+        log.debug("Using exclude matchers: {}", this.excludeMatchers);
+        log.debug("Using ignore matchers: {}", this.ignoreMatchers);
 
 
         final long now = System.currentTimeMillis();
