@@ -1,6 +1,5 @@
 package com.fizzed.jsync.engine;
 
-import com.fizzed.jsync.sftp.SftpVirtualVolume;
 import com.fizzed.jsync.vfs.VirtualVolume;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
