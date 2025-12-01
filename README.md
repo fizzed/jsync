@@ -126,6 +126,11 @@ public class LocalToRemoteDemo {
 }
 ```
 
+## Command-Line Tool
+
+If you'd like to use ```jsync``` from the command-line, we'd suggest using the Blaze Jsync plugin that is part of the
+[Blaze Script System](https://github.com/fizzed/blaze).
+
 ## Sponsorship & Support
 
 ![](https://cdn.fizzed.com/github/fizzed-logo-100.png)
