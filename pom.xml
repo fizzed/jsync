@@ -2,7 +2,7 @@
 
     <modelVersion>4.0.0</modelVersion>
     <artifactId>jsync</artifactId>
-    <version>1.4.1-SNAPSHOT</version>
+    <version>1.5.0</version>
     <name>jsync</name>
     <packaging>pom</packaging>
     
@@ -15,7 +15,7 @@
     <scm>
         <url>https://github.com/fizzed/jsync</url>
         <connection>scm:git:git@github.com:fizzed/jsync.git</connection>
-      <tag>HEAD</tag>
+      <tag>v1.5.0</tag>
   </scm>
     
     <properties>
