@@ -1,6 +1,5 @@
 package com.fizzed.jsync.sftp;
 
-import com.fizzed.jsync.sftp.impl.SftpATTRSAccessor;
 import com.fizzed.jsync.sftp.impl.SignalClosingOutputStream;
 import com.fizzed.jsync.vfs.*;
 import com.fizzed.jsync.vfs.util.Checksums;
@@ -294,7 +293,7 @@ public class SftpVirtualFileSystem extends AbstractVirtualFileSystem {
     @Override
     public void updateStat(VirtualPath path, VirtualFileStat stat, Collection<StatUpdateOption> options) throws IOException {
         try {
-            final SftpATTRS attrs = SftpATTRSAccessor.createSftpATTRS();
+            final SftpATTRS attrs = new SftpATTRS();
 
             // TODO: are we updating uid/gid?
             Integer uid = null;
