@@ -38,6 +38,7 @@ or files either locally or remotely via SSH/SFTP. Requires no native dependencie
 and requires no special executables present on the remote system.
 
 ## Features
+ - Supports all platforms that Java can run on, including Windows
  - Diff-based Syncing: Only transfers files that have changed (based on size, modification time, or checksum).
  - Local: Sync between local directories.
  - SSH/SFTP: Sync between local and remote servers (via SSH/SFTP).
@@ -46,6 +47,22 @@ and requires no special executables present on the remote system.
  - Supports syncing file and directory permissions
  - Does NOT require rsync to be installed on either system, uses SFTP for file operations on the remote system,
 along with using SSH for checksums if needed.
+
+## Command-Line Tool / Example
+
+This library is optimized primarily for programmatic use, but if you'd like to simply use it from the command-line,
+or to quickly give it a try, we suggest trying it out from within the [Blaze Script System](https://github.com/fizzed/blaze)
+which has a built-in Jsync plugin with sophisticated SSH session handling (such as supporting ~/.ssh/config, ssh agents, etc.)
+To quickly give it a try, you can run the following commands:
+
+```shell
+git clone https://github.com/fizzed/blaze.git
+cd blaze
+java -jar blaze.jar examples/jsync.java --from ~/example.iso --to bmh-build-x64-freebsd15-1:. --mode nest
+```
+
+Not all options are available from the command-line, but many of the most common ones are supported. If there is enough
+demand, we may add a standalone command-line tool in the future.
 
 ## Usage
 
@@ -125,11 +142,6 @@ public class LocalToRemoteDemo {
 
 }
 ```
-
-## Command-Line Tool
-
-If you'd like to use ```jsync``` from the command-line, we'd suggest using the Blaze Jsync plugin that is part of the
-[Blaze Script System](https://github.com/fizzed/blaze).
 
 ## Sponsorship & Support
 
