@@ -55,7 +55,7 @@ Published to maven central use the following for core and local-only syncing:
 <dependency>
     <groupId>com.fizzed</groupId>
     <artifactId>jsync-engine</artifactId>
-    <version>1.4.0</version>
+    <version>1.5.0</version>
 </dependency>
 ```
 
@@ -65,7 +65,7 @@ If you'd like to use SSH/SFTP syncing, you'll need to add the following dependen
 <dependency>
     <groupId>com.fizzed</groupId>
     <artifactId>jsync-sftp</artifactId>
-    <version>1.4.0</version>
+    <version>1.5.0</version>
 </dependency>
 ```
 
