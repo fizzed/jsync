@@ -47,6 +47,8 @@ and requires no special executables present on the remote system.
  - Supports syncing file and directory permissions
  - Does NOT require rsync to be installed on either system, uses SFTP for file operations on the remote system,
 along with using SSH for checksums if needed.
+ - Leverages the excellent [Jsch](https://github.com/mwiede/jsch) library for SSH/SFTP support (but designed to pluggable
+and support other SSH/SFTP implementations in the future)
 
 ## Command-Line Tool / Example
 
@@ -142,6 +144,39 @@ public class LocalToRemoteDemo {
 
 }
 ```
+
+The sftp module provides fairly basic support for SSH configuration with just a hostname. Ideally, you'd provide your
+own Jsch SSH session to your `sftpVolume` call, where you can then provide your own custom SSH configuration. For example:
+
+```java
+import com.fizzed.jsync.vfs.VirtualVolume;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import java.nio.file.Paths;
+import static com.fizzed.jsync.sftp.SftpVirtualVolume.sftpVolume;
+import static com.fizzed.jsync.vfs.LocalVirtualVolume.localVolume;
+
+public class LocalToRemoteDemo {
+    static private final Logger log = LoggerFactory.getLogger(LocalToRemoteDemo.class);
+
+    static public void main(String[] args) throws Exception {
+
+        // create a jsch session with custom configuration
+        final com.jcraft.jsch.Session ssh = createMyOwnSshSession();
+        
+        final VirtualVolume source = localVolume(Paths.get("example/source"));
+        final VirtualVolume target = sftpVolume(ssh, "remote-dir/target");
+
+        final JsyncResult result = new JsyncEngine()
+            .sync(source, target, JsyncMode.MERGE);
+    }
+
+}
+```
+
+If you want more sophisticated SSH sessions automatically handled by this Jsync engine, you should look at using
+the [Blaze Script System](https://github.com/fizzed/blaze), which has a built-in Jsync plugin that supports SSH sessions with sophisticated configuration
+(such as ~/.ssh/config, ssh agents, etc.).
 
 ## Sponsorship & Support
 
