@@ -182,7 +182,7 @@ the [Blaze Script System](https://github.com/fizzed/blaze), which has a built-in
 
 ![](https://cdn.fizzed.com/github/fizzed-logo-100.png)
 
-Project by [Fizzed, Inc.](http://fizzed.com) (Follow on Twitter: [@fizzed_inc](http://twitter.com/fizzed_inc))
+Project by [Fizzed, Inc.](http://fizzed.com) (Follow on X: [@fizzed_inc](https://x.com/fizzed_inc))
 
 **Developing and maintaining opensource projects requires significant time.** If you find this project useful or need
 commercial support, we'd love to chat. Drop us an email at [ping@fizzed.com](mailto:ping@fizzed.com)
